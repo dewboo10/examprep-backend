@@ -22,7 +22,12 @@ connectDB();
 
 // Enable CORS for all routes
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:5500'],
+ origin: [
+  'http://localhost:3000',
+  'http://127.0.0.1:5500',
+  'https://tubular-entremet-8f2a2a.netlify.app'  // ✅ Add your Netlify domain here
+],
+
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
