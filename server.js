@@ -1,7 +1,5 @@
-// ===== FILE: server.js - Corrected and Cleaned Version =====
-
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); // ✅
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -9,31 +7,25 @@ const connectDB = require('./config/db');
 const authMiddleware = require('./middleware/authMiddleware');
 const User = require('./models/User');
 
-
-
-
-
-// Load env variables
 dotenv.config();
-
-// App setup
 const app = express();
-connectDB();
 
-// Enable CORS for all routes
+// ✅ FIXED: CORS MUST COME FIRST
 app.use(cors({
- origin: [
-  'http://localhost:3000',
-  'http://127.0.0.1:5500',
-  'https://tubular-entremet-8f2a2a.netlify.app'  // ✅ Add your Netlify domain here
-],
-
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:5500',
+    'https://tubular-entremet-8f2a2a.netlify.app'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Parse JSON bodies
+// ✅ Connect to DB
+connectDB();
+
+// ✅ Parse JSON before routes
 app.use(express.json());
 
 // Log all requests for debugging
