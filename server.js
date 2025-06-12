@@ -1,8 +1,9 @@
 const express = require('express');
-const cors = require('cors'); // ✅
+const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const path = require('path');
+
 const connectDB = require('./config/db');
 const authMiddleware = require('./middleware/authMiddleware');
 const User = require('./models/User');
@@ -10,7 +11,7 @@ const User = require('./models/User');
 dotenv.config();
 const app = express();
 
-// ✅ FIXED: CORS MUST COME FIRST
+// ✅ CORS setup (Netlify + localhost)
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -22,13 +23,13 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// ✅ Connect to DB
+// ✅ Connect to MongoDB
 connectDB();
 
-// ✅ Parse JSON before routes
+// ✅ Parse JSON payloads
 app.use(express.json());
 
-// Log all requests for debugging
+// 📝 Debug logs
 app.use((req, res, next) => {
   console.log('\n📝 New Request:');
   console.log(`Time: ${new Date().toISOString()}`);
@@ -41,14 +42,12 @@ app.use((req, res, next) => {
   next();
 });
 
-console.log('\n🔄 Loading routes...');
-
-app.use((req, res, next) => {
-  console.log('🔍 Incoming headers:', req.headers);
-  next();
+// ✅ Optional: respond to health check
+app.get('/', (req, res) => {
+  res.send('🎉 Exam Prep backend is live and healthy!');
 });
 
-// Load route modules
+// ✅ Route imports
 const mockRoutes = require('./routes/mockRoutes');
 const authRoutes = require('./routes/authRoutes'); 
 const examRoutes = require('./routes/examRoutes');
@@ -56,26 +55,21 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
 const leaderboardRoutes = require('./routes/leaderboardRoutes');
-// Mount routes
-app.use('/api/auth', authRoutes);                // Route: /api/auth/*
-app.use('/api/exams', examRoutes);              // Route: /api/exams/*
-app.use('/api/dashboard', dashboardRoutes);     // Route: /api/dashboard/*
+
+// ✅ Mount API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/exams', examRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/mock', mockRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 
-console.log('✅ Routes loaded');
-
-
-
+// ✅ Secure user info
 app.get('/api/user', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.id; // this comes from the auth middleware
-    const user = await User.findById(userId).select('name avatar');
-
+    const user = await User.findById(req.user.id).select('name avatar');
     if (!user) return res.status(404).json({ error: 'User not found' });
-
     res.json({ name: user.name, avatar: user.avatar });
   } catch (err) {
     console.error('Error fetching user:', err);
@@ -83,28 +77,15 @@ app.get('/api/user', authMiddleware, async (req, res) => {
   }
 });
 
-
-// Test route
+// ✅ Test route
 app.post('/api/test', (req, res) => {
-  console.log('✅ Test route hit');
-  res.json({ message: "Direct route works" });
+  res.json({ message: "✅ Test route works" });
 });
 
-// Serve static files from client directory
+// ✅ Serve static files (if needed)
 app.use(express.static(path.join(__dirname, '../client')));
 
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('\n❌ Server error:', err);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    message: err.message
-  });
-});
-
-// 404 handler
+// ❌ Route not found handler (404)
 app.use((req, res) => {
   console.log('\n❌ Route not found:', req.url);
   res.status(404).json({
@@ -114,14 +95,23 @@ app.use((req, res) => {
   });
 });
 
-// Start the server
+// ✅ Error handler
+app.use((err, req, res, next) => {
+  console.error('\n❌ Server error:', err);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    message: err.message
+  });
+});
+
+// ✅ Start server
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => {
-console.log('\n✅ Server running on port', PORT);
-console.log('\nAvailable routes:');
-console.log('- POST /api/auth/register');
-console.log('- POST /api/auth/login');
-console.log('- POST /api/mock/submit');
-console.log('- GET  /api/mock');
-
+  console.log('\n✅ Server running on port', PORT);
+  console.log('\nAvailable routes:');
+  console.log('- POST /api/auth/register');
+  console.log('- POST /api/auth/login');
+  console.log('- POST /api/mock/submit');
+  console.log('- GET  /api/mock');
 });
