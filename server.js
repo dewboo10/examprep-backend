@@ -55,7 +55,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
 const leaderboardRoutes = require('./routes/leaderboardRoutes');
-
+const seedRoutes = require('./routes/seed.routes');
 // ✅ Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/exams', examRoutes);
@@ -64,6 +64,7 @@ app.use('/api/mock', mockRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/seed', seedRoutes);
 
 // ✅ Secure user info
 app.get('/api/user', authMiddleware, async (req, res) => {
