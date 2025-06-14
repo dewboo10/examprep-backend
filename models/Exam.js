@@ -4,8 +4,7 @@ const examSchema = new mongoose.Schema({
   name: { 
     type: String, 
     required: true, 
-    unique: true,
-    enum: ['SNAP', 'CAT', 'GMAT', 'XAT'] 
+    unique: true, 
   },
   sections: [{
     name: { 
