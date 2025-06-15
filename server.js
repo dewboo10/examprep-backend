@@ -55,7 +55,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const performanceRoutes = require('./routes/performanceRoutes');
 const leaderboardRoutes = require('./routes/leaderboardRoutes');
-const seedRoutes = require('./routes/seed.Routes');
+const seedRoutes = require('./routes/seed.routes');
 // ✅ Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/exams', examRoutes);
