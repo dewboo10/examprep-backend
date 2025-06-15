@@ -1,23 +1,44 @@
-// In routes/examRoutes.js or a new file routes/seedRoutes.js
+// ✅ routes/seed.routes.js
 const express = require('express');
 const router = express.Router();
-const Exam = require('../models/Exam');
-const Question = require('../models/Question'); // If this exists
-const exams = require('../scripts/seedExams'); // You can move array here if needed
-const questions = require('../scripts/seedQuestions'); // For example
 
+const Exam = require('../models/Exam');
+const Question = require('../models/Question');
+const examData = require('../data/examsData');
+
+// 🧠 Optional: Load dynamic questions per exam/day
+const fs = require('fs');
+const path = require('path');
+
+// ✅ Route: Seed All (exams + questions)
 router.get('/seed-all', async (req, res) => {
   try {
+    console.log('🔁 Clearing existing Exams and Questions...');
     await Exam.deleteMany();
-    await Exam.insertMany(exams);
-    
     await Question.deleteMany();
-    await Question.insertMany(questions);
 
-    res.json({ message: '✅ Seeded exams and questions!' });
-  } catch (error) {
-    console.error('Seeding failed:', error);
-    res.status(500).json({ error: 'Seeding failed', details: error.message });
+    console.log('✅ Seeding Exams...');
+    await Exam.insertMany(examData);
+
+    console.log('✅ Seeding Questions...');
+    const questionDir = path.join(__dirname, '../data/questions/cat');
+    const files = fs.readdirSync(questionDir);
+
+    let allQuestions = [];
+
+    for (const file of files) {
+      if (file.endsWith('.js')) {
+        const questionData = require(path.join(questionDir, file));
+        allQuestions.push(...questionData);
+      }
+    }
+
+    await Question.insertMany(allQuestions);
+
+    res.json({ message: `✅ Seeded ${examData.length} exams and ${allQuestions.length} questions.` });
+  } catch (err) {
+    console.error('❌ Seeding failed:', err.message);
+    res.status(500).json({ error: 'Seeding failed', details: err.message });
   }
 });
 
