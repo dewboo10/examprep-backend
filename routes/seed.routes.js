@@ -4,7 +4,7 @@ const router = express.Router();
 
 const Exam = require('../models/Exam');
 const Question = require('../models/Question');
-const examData = require('../data/examsdata');
+const examData = require('../data/examData');
 
 // 🧠 Optional: Load dynamic questions per exam/day
 const fs = require('fs');
