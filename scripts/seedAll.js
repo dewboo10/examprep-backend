@@ -7,7 +7,7 @@ const Exam = require('../models/Exam');
 const Question = require('../models/Question');
 
 // Load data
-const exams = require('../data/examData'); // ✅ Centralized exam list
+const exams = require('../data/examdata'); // ✅ Centralized exam list
 const day1CatQuestions = require('../data/questions/cat/day1'); // ✅ Day 1 questions
 
 // Load .env
