@@ -8,6 +8,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 // Model
 const Exam = require('../models/Exam');
 
+// Define exam data
 const exams = [
   {
     name: "Common Admission Test",
@@ -24,8 +25,7 @@ const exams = [
     quizCount: 500,
     icon: "fas fa-building",
     colorTheme: "purple"
-  }
-  ,
+  },
   {
     name: "Common Management Admission Test",
     code: "CMAT",
@@ -33,8 +33,7 @@ const exams = [
     quizCount: 500,
     icon: "fas fa-graduation-cap",
     colorTheme: "green"
-  }
-  ,
+  },
   {
     name: "NMIMSS Management Aptitute Test",
     code: "NMAT",
@@ -42,8 +41,7 @@ const exams = [
     quizCount: 500,
     icon: "fas fa-university",
     colorTheme: "red"
-  }
-  ,
+  },
   {
     name: "Bank Probationary Test",
     code: "Bank PO",
@@ -51,8 +49,7 @@ const exams = [
     quizCount: 1000,
     icon: "fas fa-building",
     colorTheme: "yellow"
-  }
-  ,
+  },
   {
     name: "Institute of Banking Personnel Selection Clerk",
     code: "IBPS Clerk",
@@ -60,8 +57,7 @@ const exams = [
     quizCount: 1000,
     icon: "fas fa-check-circle",
     colorTheme: "blue"
-  }
-  ,
+  },
   {
     name: "School-Boards Level test",
     code: "CBSE, ICSE, State Board",
@@ -69,8 +65,7 @@ const exams = [
     quizCount: 1000,
     icon: "fas fa-school",
     colorTheme: "pink"
-  }
-  ,
+  },
   {
     name: "Staff Selection Commission Exams",
     code: "SSC CGL",
@@ -87,10 +82,18 @@ const seedExams = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to DB');
 
-    await Exam.deleteMany();
-    await Exam.insertMany(exams);
+    for (let exam of exams) {
+      const exists = await Exam.findOne({ code: exam.code });
 
-    console.log('✅ Exams seeded!');
+      if (exists) {
+        console.log(`ℹ️  Exam "${exam.code}" already exists, skipping.`);
+      } else {
+        await Exam.create(exam);
+        console.log(`✅ Inserted exam: ${exam.code}`);
+      }
+    }
+
+    console.log('🎉 Seeding complete!');
     process.exit();
   } catch (err) {
     console.error('❌ Seeding failed:', err);
