@@ -52,4 +52,4 @@ const seedExams = async () => {
   }
 };
 
-seedExams();
+// seedExams();
