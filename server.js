@@ -66,6 +66,14 @@ app.use('/api/performance', performanceRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/seed', seedRoutes);
 
+
+// ✅ Health check route
+app.get('/api/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+
+
 // ✅ Secure user info
 app.get('/api/user', authMiddleware, async (req, res) => {
   try {
