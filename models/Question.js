@@ -8,7 +8,7 @@ const questionSchema = new mongoose.Schema({
   img:         { type: String, default: null },
   passage:     { type: String, default: null},
   question:    { type: String, required: true },
-  options:     [{ type: String, required: true }],f
+  options:     [{ type: String, required: true }],
   answerIndex: { type: Number, required: true },
   explanation: String,
   video:       String,
