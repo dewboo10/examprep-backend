@@ -1,4 +1,3 @@
-
 // data/questions/cat/day1.js
 module.exports = [
   {
@@ -215,7 +214,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `If the roots of the equation x^2 - 5x + 6 = 0 are also the roots of x^2 - αx + β = 0, then what is α + β?`,
     options: [
       "(a) 7",
@@ -233,7 +232,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `A shopkeeper marks up an item by 40% and then offers a discount of 20%. If he gives an additional 10% discount on the discounted price, what is his net profit percentage?`,
     options: [
       "(a) 0.8%",
@@ -251,7 +250,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `In a right-angled triangle ABC (right-angled at B), the hypotenuse AC is 10 cm. If the median BM is 5 cm, what is the area of the triangle?`,
     options: [
       "(a) 12",
@@ -269,7 +268,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `What is the remainder when 7^2023 is divided by 5?`,
     options: [
       "(a) 1",
@@ -287,7 +286,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `How many 4-digit numbers can be formed using digits 1, 2, 3, 4, 5 (without repetition) that are divisible by 4?`,
     options: [
       "(a) 12",
@@ -305,7 +304,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `A and B can complete a work in 12 days, B and C in 15 days, and C and A in 20 days. How many days will A alone take to complete half the work?`,
     options: [
       "(a) 15",
@@ -323,7 +322,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `If log₁₀2 = a and log₁₀3 = b, then log₅12 is:`,
     options: [
       "(a) (a+2b)/(1-a)",
@@ -341,7 +340,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `Two circles of radii 5 cm and 3 cm touch each other externally. What is the length of their common tangent?`,
     options: [
       "(a) 2√15",
@@ -359,7 +358,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `A mixture contains milk and water in the ratio 5:1. On adding 5 liters of water, the ratio becomes 5:2. What was the original quantity of milk?`,
     options: [
       "(a) 20",
@@ -377,7 +376,7 @@ module.exports = [
     exam: "CAT",
     day: 1,
     section: "Quant",
-    paragraph: {},
+    paragraph: null,
     question: `The LCM of two numbers is 120 and their HCF is 4. If one number is 8, what is the other number?`,
     options: [
       "(a) 30",
