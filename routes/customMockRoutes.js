@@ -24,28 +24,11 @@ router.post("/custom-generate", async (req, res) => {
 
   // Final Ordered freeModels (for question generation)
   const freeModels = [
-    // Top performers for JSON and comprehension
-    "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",      // ✅ Best JSON reliability and comprehension
-    "Qwen/Qwen1.5-72B-Chat-Free",                        // ✅ Smart and interprets loose prompts decently
-    "mistralai/Mixtral-8x7B-Instruct-Free",              // ✅ Fast, good fallback
-
-    // Newly added but promising free models
-    "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",    // 🔄 Experimental but LLaMA-based
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",           // 🔄 Smaller but quick
-    "meta-llama/Llama-4-Maverick-17B-128E",              // 🔄 New Llama 4-based
-
-    // Mid-performers
-    "Qwen/Qwen2.5-32B",                                  // 🟡 OK-ish for long text
-    "Qwen/Qwen2.5-7B-Instruct",                          // 🟡 Lightweight, decent fallback
-    "lgai/exaone-deep-32b",                              // 🟡 Occasionally unstable
-    "google/gemma-7b-it",                                // 🟡 Needs strict prompts
-    "togethercomputer/StripedHyena-Nous-7B",             // 🟡 Often verbose but helpful
-
-    // Lower performers / backup only
-    "mistralai/Mistral-7B-Instruct-v0.3",                // ⚠️ Prone to invalid JSON
-    "arcee-ai/AFM-4.5B-Preview",                         // ⚠️ Small and weak for comprehension
-    "meta-llama/Llama-Vision-Free",                      // ⚠️ Vision model, not ideal for text
-    "nim/nvidia/llama-3.3-nemotron-super-49b-v1"         // ⚠️ Experimental, unstable outputs
+    "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",    // ✅ working & reliable
+    "meta-llama/Llama-4-Maverick-17B-128E",            // ✅ new, fast
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",         // ✅ fast, supports instructions
+    "Qwen/Qwen2.5-7B-Instruct",                        // ✅ supports prompt-based answers
+    "togethercomputer/llama-2-7b-chat"                 // ✅ Always enabled fallback
   ];
 
   // Final Ordered classifierModels (for category/topic inference)
@@ -363,18 +346,19 @@ Output format (strict JSON only, no markdown, no comments):
   }
 
   async function generateMock(prompt, expectField) {
-    let failCount = 0;
-    for (let i = 0; i < freeModels.length; i++) {
-      const model = freeModels[currentModelIndex];
-      console.log(`🔄 Trying model: ${model}`); // Log model rotation
+    let modelUsed = null;
+    let finalResponse = null;
+    let lastError = null;
+    for (let model of freeModels) {
+      console.log(`🔄 Trying model: ${model}`);
       try {
         const response = await axios.post(
-          "https://api.together.xyz/v1/chat/completions",
+          "https://api.together.xyz/inference",
           {
             model,
-            messages: [{ role: "user", content: prompt }],
+            prompt: prompt,
+            max_tokens: 1200,
             temperature: 0.8,
-            top_p: 0.95,
           },
           {
             headers: {
@@ -383,58 +367,57 @@ Output format (strict JSON only, no markdown, no comments):
             },
           }
         );
-        const rawOutput = response.data.choices[0].message.content;
-        console.log("📝 Raw model output:", rawOutput); // Log raw output
-        let jsonBlock;
-        // Try to extract the expected field from object or array
+        const rawOutput = response.data.output;
+        console.log("📝 Raw model output:", rawOutput);
+        // Try to parse JSON from output
         try {
-          // Try to parse as object first
           const repaired = jsonrepair(rawOutput);
           const parsed = JSON.parse(repaired);
           if (parsed && typeof parsed === 'object') {
             if (Array.isArray(parsed)) {
-              // Sometimes model returns array directly
-              return { quizJson: parsed, model };
+              modelUsed = model;
+              finalResponse = parsed;
+              break;
             } else if (parsed[expectField]) {
-              return { quizJson: parsed, model };
+              modelUsed = model;
+              finalResponse = parsed;
+              break;
             } else {
               // Try to find first array in object
               const arrField = Object.values(parsed).find(v => Array.isArray(v));
               if (arrField) {
-                return { quizJson: { [expectField]: arrField }, model };
+                modelUsed = model;
+                finalResponse = { [expectField]: arrField };
+                break;
               }
             }
           }
         } catch (e) {
-          // fallback to old extraction
-          jsonBlock = extractValidJsonOnly(rawOutput);
+          // fallback: try to extract array
           try {
+            const jsonBlock = extractValidJsonOnly(rawOutput);
             const quizJson = JSON.parse(jsonrepair(jsonBlock));
             if (quizJson && Array.isArray(quizJson)) {
-              return { quizJson, model };
+              modelUsed = model;
+              finalResponse = quizJson;
+              break;
             }
           } catch (e2) {
-            // continue to failCount++
+            // continue to next model
           }
         }
-        failCount++;
-        console.warn(`⚠️ Model ${model} returned unparsable JSON, trying next...`);
-        console.warn("Broken response:", rawOutput);
-        if (failCount >= 3) {
-          throw new Error("Sorry, we're retrying. Please try again in a few seconds.");
-        }
-        currentModelIndex = (currentModelIndex + 1) % freeModels.length;
-        continue;
       } catch (err) {
-        failCount++;
-        console.warn(`⚠️ Model ${model} failed, trying next...`, err.message);
-        if (failCount >= 3) {
-          throw new Error("Sorry, we're retrying. Please try again in a few seconds.");
-        }
-        currentModelIndex = (currentModelIndex + 1) % freeModels.length;
+        const errMsg = err.response?.data?.error || err.message || 'Unknown error';
+        lastError = errMsg;
+        console.warn(`❌ Model ${model} failed:`, errMsg);
       }
     }
-    throw new Error("❌ All free models failed or returned invalid JSON. Try again later.");
+    if (!finalResponse) {
+      throw new Error(`❌ All free models failed or returned invalid JSON. Last error: ${lastError || 'Unknown error'}`);
+    }
+    console.log("✅ Final model used:", modelUsed);
+    console.log("🧠 Final output:", finalResponse);
+    return { quizJson: finalResponse, model: modelUsed };
   }
 
   // Extract all topics, subtopics, and microtopics as a flat array
@@ -555,7 +538,7 @@ Output format (strict JSON only, no markdown, no comments):
   } catch (error) {
     console.error("Together.ai Error:", error);
     if (!res.headersSent) {
-      return res.status(500).json({ error: error.message || "Failed to generate mock questions" });
+      return res.status(500).json({ error: error.message || (typeof error === 'string' ? error : "Failed to generate mock questions") });
     } else {
       return;
     }
