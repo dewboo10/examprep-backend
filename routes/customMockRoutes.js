@@ -551,7 +551,7 @@ Output format (strict JSON only, no markdown, no comments):
     }
 
     const { quizJson, model } = result;
-    return res.status(200).json({ ...quizJson, model, quizType });
+    return res.status(200).json({ success: true, ...quizJson, model, quizType });
   } catch (error) {
     console.error("Together.ai Error:", error);
     if (!res.headersSent) {
