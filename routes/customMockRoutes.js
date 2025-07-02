@@ -385,8 +385,7 @@ Output format (strict JSON only, no markdown, no comments):
           console.warn(`⚠️ Model ${model} returned unparsable JSON, trying next...`);
           console.warn("Broken response:", rawOutput);
           if (failCount >= 3) {
-            res.status(503).json({ error: "Sorry, we're retrying. Please try again in a few seconds." });
-            return;
+            throw new Error("Sorry, we're retrying. Please try again in a few seconds.");
           }
           currentModelIndex = (currentModelIndex + 1) % freeModels.length;
           continue;
@@ -395,8 +394,7 @@ Output format (strict JSON only, no markdown, no comments):
         failCount++;
         console.warn(`⚠️ Model ${model} failed, trying next...`);
         if (failCount >= 3) {
-          res.status(503).json({ error: "Sorry, we're retrying. Please try again in a few seconds." });
-          return;
+          throw new Error("Sorry, we're retrying. Please try again in a few seconds.");
         }
         currentModelIndex = (currentModelIndex + 1) % freeModels.length;
       }
