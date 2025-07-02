@@ -24,11 +24,7 @@ router.post("/custom-generate", async (req, res) => {
 
   // Final Ordered freeModels (for question generation)
   const freeModels = [
-    "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",    // ✅ working & reliable
-    "meta-llama/Llama-4-Maverick-17B-128E",            // ✅ new, fast
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",         // ✅ fast, supports instructions
-    "Qwen/Qwen2.5-7B-Instruct",                        // ✅ supports prompt-based answers
-    "togethercomputer/llama-2-7b-chat"                 // ✅ Always enabled fallback
+    "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" // ✅ Only currently working free model
   ];
 
   // Final Ordered classifierModels (for category/topic inference)
@@ -413,7 +409,9 @@ Output format (strict JSON only, no markdown, no comments):
       }
     }
     if (!finalResponse) {
-      throw new Error(`❌ All free models failed or returned invalid JSON. Last error: ${lastError || 'Unknown error'}`);
+      throw new Error(
+        `All free Together.ai models are currently unavailable or rate-limited. Please try again in a few minutes, or check back later for updates on available models. Last error: ${lastError || 'Unknown error'}`
+      );
     }
     console.log("✅ Final model used:", modelUsed);
     console.log("🧠 Final output:", finalResponse);
