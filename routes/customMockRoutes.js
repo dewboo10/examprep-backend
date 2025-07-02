@@ -496,11 +496,24 @@ Output format (strict JSON only, no markdown, no comments):
         ? getPromptTemplate(detectedCategory, topic, difficulty, numberOfQuestions, seed)
         : getPromptByType(quizType);
     }
-    const { quizJson, model } = await generateMock(prompt, expectField);
-    res.status(200).json({ ...quizJson, model, quizType });
+    let result;
+    try {
+      result = await generateMock(prompt, expectField);
+    } catch (err) {
+      console.error("🧠 Model call failed:", err);
+      return res.status(500).json({ error: "Model call failed or returned invalid output." });
+    }
+
+    if (!result || !result.quizJson) {
+      console.error("❌ No valid quizJson extracted. Fallback triggered.");
+      return res.status(500).json({ error: "Model response invalid or unparsable" });
+    }
+
+    const { quizJson, model } = result;
+    return res.status(200).json({ ...quizJson, model, quizType });
   } catch (error) {
     console.error("Together.ai Error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate mock questions" });
+    return res.status(500).json({ error: error.message || "Failed to generate mock questions" });
   }
 });
 
