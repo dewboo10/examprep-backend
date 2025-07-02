@@ -1,6 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 require("dotenv").config();
+console.log("TOGETHER_API_KEY:", process.env.TOGETHER_API_KEY); // Debug: Should print the key (remove in prod)
 const syllabus = require('../syllabus'); // Adjust path as needed
 const { jsonrepair } = require('jsonrepair');
 const stringSimilarity = require('string-similarity');
@@ -9,7 +10,17 @@ const Fuse = require('fuse.js');
 const router = express.Router();
 
 router.post("/custom-generate", async (req, res) => {
+  // Input validation
   const { topic, difficulty, numberOfQuestions, mode } = req.body;
+  if (!topic || typeof topic !== 'string' || !topic.trim()) {
+    return res.status(400).json({ error: "Missing or invalid 'topic' field." });
+  }
+  if (!difficulty || typeof difficulty !== 'string' || !difficulty.trim()) {
+    return res.status(400).json({ error: "Missing or invalid 'difficulty' field." });
+  }
+  if (!numberOfQuestions || typeof numberOfQuestions !== 'number' || numberOfQuestions < 1 || numberOfQuestions > 100) {
+    return res.status(400).json({ error: "Missing or invalid 'numberOfQuestions' field (must be 1-100)." });
+  }
 
   // Final Ordered freeModels (for question generation)
   const freeModels = [
@@ -355,6 +366,7 @@ Output format (strict JSON only, no markdown, no comments):
     let failCount = 0;
     for (let i = 0; i < freeModels.length; i++) {
       const model = freeModels[currentModelIndex];
+      console.log(`🔄 Trying model: ${model}`); // Log model rotation
       try {
         const response = await axios.post(
           "https://api.together.xyz/v1/chat/completions",
@@ -372,27 +384,50 @@ Output format (strict JSON only, no markdown, no comments):
           }
         );
         const rawOutput = response.data.choices[0].message.content;
-        let jsonBlock = extractValidJsonOnly(rawOutput);
+        console.log("📝 Raw model output:", rawOutput); // Log raw output
+        let jsonBlock;
+        // Try to extract the expected field from object or array
         try {
-          const quizJson = JSON.parse(jsonrepair(jsonBlock));
-          if (quizJson && Array.isArray(quizJson)) {
-            return { quizJson, model };
-          } else {
-            throw new Error("No valid array in JSON");
+          // Try to parse as object first
+          const repaired = jsonrepair(rawOutput);
+          const parsed = JSON.parse(repaired);
+          if (parsed && typeof parsed === 'object') {
+            if (Array.isArray(parsed)) {
+              // Sometimes model returns array directly
+              return { quizJson: parsed, model };
+            } else if (parsed[expectField]) {
+              return { quizJson: parsed, model };
+            } else {
+              // Try to find first array in object
+              const arrField = Object.values(parsed).find(v => Array.isArray(v));
+              if (arrField) {
+                return { quizJson: { [expectField]: arrField }, model };
+              }
+            }
           }
         } catch (e) {
-          failCount++;
-          console.warn(`⚠️ Model ${model} returned unparsable JSON, trying next...`);
-          console.warn("Broken response:", rawOutput);
-          if (failCount >= 3) {
-            throw new Error("Sorry, we're retrying. Please try again in a few seconds.");
+          // fallback to old extraction
+          jsonBlock = extractValidJsonOnly(rawOutput);
+          try {
+            const quizJson = JSON.parse(jsonrepair(jsonBlock));
+            if (quizJson && Array.isArray(quizJson)) {
+              return { quizJson, model };
+            }
+          } catch (e2) {
+            // continue to failCount++
           }
-          currentModelIndex = (currentModelIndex + 1) % freeModels.length;
-          continue;
         }
+        failCount++;
+        console.warn(`⚠️ Model ${model} returned unparsable JSON, trying next...`);
+        console.warn("Broken response:", rawOutput);
+        if (failCount >= 3) {
+          throw new Error("Sorry, we're retrying. Please try again in a few seconds.");
+        }
+        currentModelIndex = (currentModelIndex + 1) % freeModels.length;
+        continue;
       } catch (err) {
         failCount++;
-        console.warn(`⚠️ Model ${model} failed, trying next...`);
+        console.warn(`⚠️ Model ${model} failed, trying next...`, err.message);
         if (failCount >= 3) {
           throw new Error("Sorry, we're retrying. Please try again in a few seconds.");
         }
@@ -499,19 +534,31 @@ Output format (strict JSON only, no markdown, no comments):
       result = await generateMock(prompt, expectField);
     } catch (err) {
       console.error("🧠 Model call failed:", err);
-      return res.status(500).json({ error: "Model call failed or returned invalid output." });
+      if (!res.headersSent) {
+        return res.status(500).json({ error: "Model call failed or returned invalid output." });
+      } else {
+        return;
+      }
     }
 
     if (!result || !result.quizJson) {
       console.error("❌ No valid quizJson extracted. Fallback triggered.");
-      return res.status(500).json({ error: "Model response invalid or unparsable" });
+      if (!res.headersSent) {
+        return res.status(500).json({ error: "Model response invalid or unparsable" });
+      } else {
+        return;
+      }
     }
 
     const { quizJson, model } = result;
     return res.status(200).json({ ...quizJson, model, quizType });
   } catch (error) {
     console.error("Together.ai Error:", error);
-    return res.status(500).json({ error: error.message || "Failed to generate mock questions" });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: error.message || "Failed to generate mock questions" });
+    } else {
+      return;
+    }
   }
 });
 
