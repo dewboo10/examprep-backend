@@ -4,7 +4,8 @@ const User = require('../models/User');
 module.exports = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
-    const { examCode, mockNumber } = req.body; // expects examCode and mockNumber in request body
+    const { exam, day } = req.body; // expects exam and day in request body
+    const dayNum = parseInt(day, 10);
 
     // Check if premium has expired
     if (user.tier === 'premium' && user.premiumExpiry && user.premiumExpiry < new Date()) {
@@ -17,7 +18,7 @@ module.exports = async (req, res, next) => {
     if (user.tier === 'mid') allowedMocks = 15;
     if (user.tier === 'premium') allowedMocks = Infinity;
 
-    if (mockNumber > allowedMocks) {
+    if (dayNum > allowedMocks) {
       return res.status(403).json({ message: 'Upgrade required to access this mock.' });
     }
 
