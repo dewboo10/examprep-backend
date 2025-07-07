@@ -5,9 +5,10 @@ const router = express.Router();
 const Question = require('../models/Question');
 const MockSubmission = require('../models/mockSubmission');
 const auth = require('../middleware/authMiddleware');
+const mockAccess = require('../middleware/mockAccess');
 
 // ✅ POST /api/mock/submit – Save a mock test submission
-router.post('/submit', auth, async (req, res) => {
+router.post('/submit', auth, mockAccess, async (req, res) => {
   console.log('✅ /api/mock/submit hit');
   try {
     const { answers, reviewFlags, timeSpent, exam, day } = req.body;

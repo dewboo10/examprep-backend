@@ -28,6 +28,15 @@ const userSchema = new mongoose.Schema({
     quizzesTaken: { type: Number, default: 0 },
     accuracy: { type: Number, default: 0 },
     hoursSpent: { type: Number, default: 0 }
+  },
+  tier: {
+    type: String,
+    enum: ['free', 'mid', 'premium'],
+    default: 'free'
+  },
+  premiumExpiry: {
+    type: Date,
+    default: null
   }
 }, { timestamps: true });
 
