@@ -12,12 +12,16 @@ router.post('/submit', auth, mockAccess, async (req, res) => {
   console.log('✅ /api/mock/submit hit');
   try {
     const { answers, reviewFlags, timeSpent, exam, day } = req.body;
+    const dayNum = parseInt(day, 10);
+    if (!exam || isNaN(dayNum)) {
+      return res.status(400).json({ success: false, message: "Missing or invalid exam or day" });
+    }
 
     // ✅ [FIX #1] Prevent duplicate submissions
     const alreadySubmitted = await MockSubmission.findOne({
       userId: req.user.id,
       exam,
-      day
+      day: dayNum
     });
 
     if (alreadySubmitted) {
@@ -25,7 +29,10 @@ router.post('/submit', auth, mockAccess, async (req, res) => {
     }
 
     // ✅ Fetch questions for that exam and day
-    const questions = await Question.find({ exam, day });
+    const questions = await Question.find({ exam, day: dayNum });
+    if (!questions || questions.length === 0) {
+      return res.status(404).json({ success: false, message: "No questions found for this exam and day." });
+    }
 
     // ✅ Calculate scores
     let totalScore = 0;
@@ -54,7 +61,7 @@ router.post('/submit', auth, mockAccess, async (req, res) => {
     const submission = new MockSubmission({
       userId: req.user.id,
       exam,
-      day,
+      day: dayNum,
       answers,
       reviewFlags,
       timeSpent,
