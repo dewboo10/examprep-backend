@@ -1,10 +1,10 @@
-// data/questions/cat/day1.js
+// data/questions/nmat/day2.js
 
 module.exports = [
   {
-    id: "cat-day1-q1",
-    exam: "CAT",
-    day: 1,
+    id: "nmat-day2-q1",
+    exam: "NMAT",
+    day: 2,
     section: "VARC",
     paragraph: `India’s economic rise in recent decades has been powered by an enormous young workforce. However, unemployment among youth remains high, especially in rural areas. Critics argue this is due to a disconnect between education and employability.`,
     question: "What is the main cause of youth unemployment according to critics?",
@@ -20,9 +20,9 @@ module.exports = [
     videoLink: "https://www.youtube.com/embed/example?t=42"
   },
   {
-    id: "cat-day1-q2",
-    exam: "CAT",
-    day: 1,
+    id: "nmat-day2-q2",
+    exam: "NMAT",
+    day: 2,
     section: "Quant",
     question: "If x + 1/x = 3, what is the value of x³ + 1/x³?",
     options: [
@@ -37,9 +37,9 @@ module.exports = [
     videoLink: "https://www.youtube.com/embed/example2?t=55"
   },
   {
-    id: "cat-day1-q3",
-    exam: "CAT",
-    day: 1,
+    id: "nmat-day2-q3",
+    exam: "NMAT",
+    day: 2,
     section: "LRDI",
     question: "Four friends A, B, C, and D sit around a circular table. B is to the left of A, and C is opposite B. Who is to the right of C?",
     options: [
