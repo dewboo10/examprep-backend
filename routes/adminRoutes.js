@@ -5,6 +5,7 @@ const { authorizeAdmin } = require('../middleware/authMiddleware');
 const questionController = require('../controllers/questionController');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
+const dashboardController = require('../controllers/dashboardController');
 
 // Test admin-only route
 router.get('/test-admin', auth, authorizeAdmin, (req, res) => {
@@ -17,5 +18,6 @@ router.post('/questions', auth, authorizeAdmin, questionController.createQuestio
 router.put('/questions/:id', auth, authorizeAdmin, questionController.updateQuestion); // Update
 router.delete('/questions/:id', auth, authorizeAdmin, questionController.deleteQuestion); // Delete
 router.post('/questions/upload-csv', auth, authorizeAdmin, upload.single('file'), require('../controllers/questionController').uploadQuestionsCSV);
+router.get('/stats', auth, authorizeAdmin, dashboardController.adminStats);
 
 module.exports = router; 

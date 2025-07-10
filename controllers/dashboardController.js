@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const MockSubmission = require('../models/mockSubmission');
 const sendOTPEmail = require('../utils/mailer');
+const Question = require('../models/Question');
+const Exam = require('../models/Exam');
 
 
 
@@ -132,5 +134,20 @@ exports.sendOtp = async (req, res) => {
   } catch (err) {
     console.error('❌ Failed to send OTP email:', err);
     res.status(500).json({ error: 'Failed to send OTP email' });
+  }
+};
+
+// Admin: GET /api/admin/stats
+exports.adminStats = async (req, res) => {
+  try {
+    const [totalQuestions, totalMocks, totalUsers, activeToday] = await Promise.all([
+      Question.countDocuments(),
+      Exam.countDocuments(),
+      User.countDocuments(),
+      User.countDocuments({ lastLogin: { $gte: new Date(new Date().setHours(0,0,0,0)) } })
+    ]);
+    res.json({ totalQuestions, totalMocks, totalUsers, activeToday });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch admin stats', error: err.message });
   }
 };

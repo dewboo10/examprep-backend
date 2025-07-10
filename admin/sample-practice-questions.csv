@@ -1,0 +1,4 @@
+id,question,option1,option2,option3,option4,answerIndex,explanation,chapter,exam,day,section,type
+cat-practice-q1,What is the capital of France?,London,Berlin,Paris,Rome,3,Paris is the capital.,Geography,CAT,, ,practice
+cat-practice-q2,Who wrote Hamlet?,Shakespeare,Dickens,Tolkien,Rowling,1,Shakespeare wrote Hamlet.,Literature,CAT,, ,practice
+cat-practice-q3,What is the boiling point of water?,90,95,100,110,3,Water boils at 100°C.,Science,CAT,, ,practice 
