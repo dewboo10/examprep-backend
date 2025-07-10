@@ -13,7 +13,12 @@ const questionSchema = new mongoose.Schema({
   explanation: String,
   video:       String,
   videoUrl:    String,  
-  videoStart:  Number
+  videoStart:  Number,
+  type: {
+    type: String,
+    enum: ['mock', 'practice'],
+    default: 'mock'
+  }
 });
 
 module.exports = mongoose.model('Question', questionSchema);

@@ -58,6 +58,7 @@ const leaderboardRoutes = require('./routes/leaderboardRoutes');
 const seedRoutes = require('./routes/seed.routes');
 const customMockRoutes = require('./routes/customMockRoutes');
 const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 // ✅ Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/exams', examRoutes);
@@ -69,6 +70,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/mock/custom', customMockRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 
 // ✅ Health check route
