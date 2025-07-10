@@ -77,23 +77,26 @@ exports.uploadQuestionsCSV = async (req, res) => {
           } else {
             options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
           }
-          results.push({
-            exam: row.exam,
-            day: Number(row.day),
-            section: row.section,
-            id: row.id || undefined,
+          // Explicitly map fields to avoid header/field issues
+          const questionObj = {
+            id: row.id ? row.id.trim() : undefined,
+            question: row.question ? row.question.trim() : undefined,
+            options,
+            answerIndex: row.answerIndex ? Number(row.answerIndex) : undefined,
+            explanation: row.explanation ? row.explanation.trim() : undefined,
+            chapter: row.chapter ? row.chapter.trim() : undefined,
+            exam: row.exam ? row.exam.trim() : undefined,
+            day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
+            section: row.section && row.section.trim() ? row.section.trim() : undefined,
+            type: row.type ? row.type.trim() : 'mock',
             img: row.img || null,
             passage: row.passage || null,
-            question: row.question,
-            options,
-            answerIndex: Number(row.answerIndex),
-            explanation: row.explanation,
             video: row.video || undefined,
             videoUrl: row.videoUrl || undefined,
-            videoStart: row.videoStart ? Number(row.videoStart) : undefined,
-            type: row.type || 'mock',
-            chapter: row.chapter || undefined
-          });
+            videoStart: row.videoStart ? Number(row.videoStart) : undefined
+          };
+          console.log('Final question object:', questionObj);
+          results.push(questionObj);
         })
         .on('end', resolve)
         .on('error', reject);
