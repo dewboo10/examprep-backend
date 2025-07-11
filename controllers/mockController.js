@@ -10,7 +10,17 @@ exports.getMocks = async (req, res) => {
   try {
     const { exam, day, status, search } = req.query;
     const filter = {};
-    if (exam) filter.exam = exam; // exam should be ObjectId
+    if (exam) {
+      const mongoose = require('mongoose');
+      if (mongoose.Types.ObjectId.isValid(exam)) {
+        filter.exam = exam;
+      } else {
+        // Try to find exam by code or name
+        const examDoc = await require('../models/Exam').findOne({ $or: [{ code: exam }, { name: exam }] });
+        if (examDoc) filter.exam = examDoc._id;
+        else filter.exam = null; // No match, will return empty
+      }
+    }
     if (day) filter.day = Number(day);
     if (status) filter.status = status;
     if (search) filter.name = { $regex: search, $options: 'i' };
