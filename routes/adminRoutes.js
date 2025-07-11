@@ -7,6 +7,8 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const dashboardController = require('../controllers/dashboardController');
 const mockController = require('../controllers/mockController');
+const Mock = require('../models/Mock');
+const Question = require('../models/Question');
 
 // Test admin-only route
 router.get('/test-admin', auth, authorizeAdmin, (req, res) => {
@@ -36,5 +38,22 @@ router.get('/mocks/:id/analytics', auth, authorizeAdmin, mockController.getMockA
 // Bulk upload/download mocks as CSV
 router.post('/mocks/upload-csv', auth, authorizeAdmin, upload.single('file'), mockController.uploadMocksCSV);
 router.get('/mocks/download-csv', auth, authorizeAdmin, mockController.downloadMocksCSV);
+
+// Get all questions for a mock's exam and assigned questions
+router.get('/mocks/:mockId/questions', auth, authorizeAdmin, async (req, res) => {
+  try {
+    const mock = await Mock.findById(req.params.mockId).populate('questions');
+    if (!mock) return res.status(404).json({ success: false, message: 'Mock not found' });
+
+    // Fetch all questions for the same exam as the mock
+    const allQuestions = await Question.find({ exam: mock.exam });
+    res.json({
+      allQuestions,
+      assignedQuestions: mock.questions.map(q => q._id.toString())
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 module.exports = router; 
