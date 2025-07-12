@@ -142,7 +142,7 @@ exports.adminStats = async (req, res) => {
   try {
     const [totalQuestions, totalMocks, totalUsers, activeToday] = await Promise.all([
       Question.countDocuments(),
-      Mockt.countDocuments(),
+      Mock.countDocuments(),
       User.countDocuments(),
       User.countDocuments({ lastLogin: { $gte: new Date(new Date().setHours(0,0,0,0)) } })
     ]);
