@@ -21,7 +21,18 @@ exports.getQuestions = async (req, res) => {
 exports.getAllQuestions = async (req, res) => {
   const { exam, day, section } = req.query;
   const filter = {};
-  if (exam) filter.exam = exam;
+  if (exam) {
+    const mongoose = require('mongoose');
+    if (mongoose.Types.ObjectId.isValid(exam)) {
+      filter.exam = exam;
+    } else {
+      // Try to find exam by code or name
+      const Exam = require('../models/Exam');
+      const examDoc = await Exam.findOne({ $or: [{ code: exam }, { name: exam }] });
+      if (examDoc) filter.exam = examDoc._id;
+      else filter.exam = null; // No match, will return empty
+    }
+  }
   if (day) filter.day = Number(day);
   if (section) filter.section = section;
   const questions = await Question.find(filter);
