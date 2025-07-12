@@ -14,6 +14,7 @@ const questionSchema = new mongoose.Schema({
   video:       String,
   videoUrl:    String,  
   videoStart:  Number,
+  topics: [{ type: String }],
   type: {
     type: String,
     enum: ['mock', 'practice'],

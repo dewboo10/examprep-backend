@@ -117,13 +117,29 @@ exports.uploadMocksCSV = async (req, res) => {
             const exam = await Exam.findOne({ $or: [ { code: row.exam }, { name: row.exam } ] });
             examId = exam ? exam._id : undefined;
           }
+          // Resolve questions to ObjectIds (by id, code, or name)
+          let questionIds = [];
+          if (row.questions) {
+            const questionRefs = row.questions.split(',').map(q => q.trim()).filter(Boolean);
+            for (const ref of questionRefs) {
+              let qDoc = null;
+              if (ref.match(/^[0-9a-fA-F]{24}$/)) {
+                qDoc = await Question.findById(ref);
+              }
+              if (!qDoc) {
+                // Try by id, code, or question text
+                qDoc = await Question.findOne({ $or: [ { id: ref }, { code: ref }, { question: ref } ] });
+              }
+              if (qDoc) questionIds.push(qDoc._id);
+            }
+          }
           const mockObj = {
             name: row.name,
             exam: examId,
             day: row.day ? Number(row.day) : undefined,
             description: row.description,
             status: row.status || 'active',
-            questions: row.questions ? row.questions.split(',').map(q => q.trim()) : []
+            questions: questionIds
           };
           results.push(mockObj);
         })

@@ -65,11 +65,13 @@ exports.uploadQuestionsCSV = async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
   const results = [];
   const filePath = req.file.path;
+  const Exam = require('../models/Exam');
+  const Mock = require('../models/Mock');
   try {
     await new Promise((resolve, reject) => {
       fs.createReadStream(filePath)
         .pipe(csv())
-        .on('data', (row) => {
+        .on('data', async (row) => {
           // Parse options (option1, option2, ... or options as JSON)
           let options = [];
           if (row.options) {
@@ -77,6 +79,14 @@ exports.uploadQuestionsCSV = async (req, res) => {
           } else {
             options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
           }
+
+          // Resolve exam code to ObjectId
+          let examId = row.exam;
+          if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
+            const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
+            examId = examDoc ? examDoc._id : undefined;
+          }
+
           // Explicitly map fields to avoid header/field issues
           const questionObj = {
             id: row.id ? row.id.trim() : undefined,
@@ -85,7 +95,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
             answerIndex: row.answerIndex ? Number(row.answerIndex) : undefined,
             explanation: row.explanation ? row.explanation.trim() : undefined,
             chapter: row.chapter ? row.chapter.trim() : undefined,
-            exam: row.exam ? row.exam.trim() : undefined,
+            exam: examId,
             day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
             section: row.section && row.section.trim() ? row.section.trim() : undefined,
             type: row.type ? row.type.trim() : 'mock',
@@ -93,18 +103,26 @@ exports.uploadQuestionsCSV = async (req, res) => {
             passage: row.passage || null,
             video: row.video || undefined,
             videoUrl: row.videoUrl || undefined,
-            videoStart: row.videoStart ? Number(row.videoStart) : undefined
+            videoStart: row.videoStart ? Number(row.videoStart) : undefined,
+            topics: row.topics ? row.topics.split(',').map(t => t.trim()).filter(Boolean) : []
           };
-          console.log('Final question object:', questionObj);
-          results.push(questionObj);
+          // Save question and assign to mock if mock_code is present
+          const q = await Question.create(questionObj);
+          // Assign to mock if mock_code is present
+          if (row.mock_code) {
+            const mockDoc = await Mock.findOne({ $or: [{ name: row.mock_code }, { code: row.mock_code }] });
+            if (mockDoc) {
+              mockDoc.questions.push(q._id);
+              await mockDoc.save();
+            }
+          }
+          results.push(q);
         })
         .on('end', resolve)
         .on('error', reject);
     });
-    // Bulk insert
-    const inserted = await Question.insertMany(results);
     fs.unlinkSync(filePath); // Clean up
-    res.json({ success: true, count: inserted.length });
+    res.json({ success: true, count: results.length });
   } catch (err) {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     res.status(500).json({ message: err.message });

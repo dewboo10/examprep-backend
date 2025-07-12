@@ -7,6 +7,9 @@ const path = require('path');
 const connectDB = require('./config/db');
 const authMiddleware = require('./middleware/authMiddleware');
 const User = require('./models/User');
+const Exam = require('./models/Exam');
+const Mock = require('./models/Mock');
+const Question = require('./models/Question');
 
 dotenv.config();
 const app = express();
