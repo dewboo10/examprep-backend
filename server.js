@@ -10,6 +10,7 @@ const User = require('./models/User');
 const Exam = require('./models/Exam');
 const Mock = require('./models/Mock');
 const Question = require('./models/Question');
+const adminActivityRouter = require('./routes/adminActivity');
 
 dotenv.config();
 const app = express();
@@ -53,7 +54,7 @@ app.get('/', (req, res) => {
 
 // ✅ Route imports
 const mockRoutes = require('./routes/mockRoutes');
-const authRoutes = require('./routes/authRoutes'); 
+const authRoutes = require('./routes/authRoutes');
 const examRoutes = require('./routes/examRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const questionRoutes = require('./routes/questionRoutes');
@@ -74,6 +75,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/mock/custom', customMockRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/admin', adminActivityRouter.router);
 app.use('/api/admin', adminRoutes);
 
 
