@@ -3,7 +3,7 @@ const MockSubmission = require('../models/mockSubmission');
 const sendOTPEmail = require('../utils/mailer');
 const Question = require('../models/Question');
 const Exam = require('../models/Exam');
-
+const Mock = require('../models/Mock');
 
 
 
