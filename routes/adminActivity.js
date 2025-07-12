@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Activity = require('../models/Activity');
 const adminAuth = require('../middleware/admin');
+const auth = require('../middleware/authMiddleware');
 
 // GET /api/admin/activity - Get admin activity
-router.get('/activity', adminAuth, async (req, res) => {
+router.get('/activity', auth, adminAuth, async (req, res) => {
   try {
     const activities = await Activity.find()
       .sort({ timestamp: -1 })
