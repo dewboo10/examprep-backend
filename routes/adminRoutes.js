@@ -4,7 +4,7 @@ const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const { authorizeAdmin } = require('../middleware/authMiddleware');
 const questionController = require('../controllers/questionController');
-const { getAllUsers } = require('../controllers/userController');
+const { getAllUsers, deleteUser, updateUser, patchUser } = require('../controllers/userController');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const dashboardController = require('../controllers/dashboardController');
@@ -63,5 +63,11 @@ router.get('/mocks/:mockId/questions', auth, authorizeAdmin, async (req, res) =>
 
 // Admin: List all users
 router.get('/users', auth, authorizeAdmin, getAllUsers);
+// Admin: Delete a user
+router.delete('/users/:id', auth, authorizeAdmin, deleteUser);
+// Admin: Update a user
+router.put('/users/:id', auth, authorizeAdmin, updateUser);
+// Admin: Partially update a user
+router.patch('/users/:id', auth, authorizeAdmin, patchUser);
 
 module.exports = router; 
