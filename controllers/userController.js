@@ -21,4 +21,14 @@ exports.upgradeTier = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+// Admin: Get all users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('name email tier createdAt lastLogin');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch users', error: err.message });
+  }
 }; 

@@ -1,6 +1,7 @@
 const express = require('express');
-const { upgradeTier } = require('../controllers/userController');
+const { upgradeTier, getAllUsers } = require('../controllers/userController');
 const authMiddleware = require('../middleware/authMiddleware');
+const adminAuth = require('../middleware/admin');
 
 const router = express.Router();
 
@@ -17,5 +18,8 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Server error fetching user info' });
   }
 });
+
+// Admin: List all users
+router.get('/users', adminAuth, getAllUsers);
 
 module.exports = router; 

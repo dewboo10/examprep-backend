@@ -4,6 +4,7 @@ const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const { authorizeAdmin } = require('../middleware/authMiddleware');
 const questionController = require('../controllers/questionController');
+const { getAllUsers } = require('../controllers/userController');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const dashboardController = require('../controllers/dashboardController');
@@ -59,5 +60,8 @@ router.get('/mocks/:mockId/questions', auth, authorizeAdmin, async (req, res) =>
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
+// Admin: List all users
+router.get('/users', auth, authorizeAdmin, getAllUsers);
 
 module.exports = router; 
