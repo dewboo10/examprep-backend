@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const { authorizeAdmin } = require('../middleware/authMiddleware');
@@ -9,6 +10,9 @@ const dashboardController = require('../controllers/dashboardController');
 const mockController = require('../controllers/mockController');
 const Mock = require('../models/Mock');
 const Question = require('../models/Question');
+
+// Add CORS to all admin routes
+router.use(cors());
 
 // Test admin-only route
 router.get('/test-admin', auth, authorizeAdmin, (req, res) => {
