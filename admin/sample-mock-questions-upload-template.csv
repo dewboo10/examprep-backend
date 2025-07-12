@@ -1,0 +1,6 @@
+id,question,option1,option2,option3,option4,answerIndex,explanation,exam,mock_code,day,section,chapter,topics,para,img,video,videoUrl,videoStart
+Q1,What is 2+2?,3,4,5,6,1,4 is correct,CAT,CAT-M1,1,Math,Numbers,Arithmetic,,,,,
+Q2,What is 3+5?,7,8,9,10,1,8 is correct,CAT,CAT-M1,1,Math,Numbers,"Arithmetic,Addition",,,,,
+Q3,Read the passage below.,1,2,3,4,2,Passage Q,CAT,CAT-M1,2,English,Reading,Comprehension,"This is a passage.",,,,
+Q4,What is shown in image?,1,2,3,4,0,Image Q,SNAP,SNAP-M1,1,Visuals,Images,,"",img1.png,,,
+Q5,Watch the video.,1,2,3,4,3,Video Q,XAT,XAT-M1,1,Videos,Video,"Video,Media",,,"video1.mp4",https://yt.com/abc,10 

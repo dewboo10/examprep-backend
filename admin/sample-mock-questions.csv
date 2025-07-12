@@ -1,4 +1,0 @@
-id,question,option1,option2,option3,option4,answerIndex,explanation,chapter,exam,day,section,type
-cat-day77-q1,What is 2+2?,2,3,4,5,2,The answer is 4.,Arithmetic,CAT,77,Quant,mock
-cat-day52-q2,What is 3+5?,5,6,7,8,4,The answer is 8.,Arithmetic,CAT,88,Quant,mock
-cat-day55-q1,What is 10-3?,5,6,7,8,2,The answer is 7.,Arithmetic,CAT,99,Quant,mock 
