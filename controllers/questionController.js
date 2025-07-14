@@ -128,8 +128,13 @@ exports.uploadQuestionsCSV = async (req, res) => {
             if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
               throw new Error('Missing required fields: id, question, exam, topics, or level');
             }
-            if (type === 'mock' && !section) {
-              throw new Error('Section is required for mock questions');
+            if (type === 'mock') {
+              if (!section) {
+                throw new Error('Section is required for mock questions');
+              }
+              if (!row.mock_code) {
+                throw new Error('mock_code is required for mock questions');
+              }
             }
 
             // --- Auto-create TopicSection and add section if not present ---
