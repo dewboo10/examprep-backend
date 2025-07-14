@@ -1,8 +1,10 @@
 const Question = require('../models/Question');
 const csv = require('csv-parser');
 const fs = require('fs');
+const TopicSection = require('../models/TopicSection');
 
 exports.getQuestions = async (req, res) => {
+  console.log('[API] GET /api/questions', req.query);
   const { exam, day } = req.query;
   if (!exam || !day) {
     return res.status(400).json({ message: 'Please provide exam and day' });
@@ -19,6 +21,7 @@ exports.getQuestions = async (req, res) => {
 
 // Admin: List all questions (optionally filter by exam, day, section)
 exports.getAllQuestions = async (req, res) => {
+  console.log('[API] GET /api/questions/all', req.query);
   const { exam, day, section } = req.query;
   const filter = {};
   if (exam) {
@@ -41,8 +44,10 @@ exports.getAllQuestions = async (req, res) => {
 
 // Admin: Create a new question
 exports.createQuestion = async (req, res) => {
+  console.log('[API] POST /api/questions (create)', req.body);
   try {
     const q = await Question.create(req.body);
+    console.log('[DB] Question created:', q._id);
     res.status(201).json(q);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -51,9 +56,11 @@ exports.createQuestion = async (req, res) => {
 
 // Admin: Update a question by ID
 exports.updateQuestion = async (req, res) => {
+  console.log('[API] PUT /api/questions/:id (update)', req.params, req.body);
   try {
     const q = await Question.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!q) return res.status(404).json({ message: 'Question not found' });
+    console.log('[DB] Question updated:', q._id);
     res.json(q);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -62,9 +69,11 @@ exports.updateQuestion = async (req, res) => {
 
 // Admin: Delete a question by ID
 exports.deleteQuestion = async (req, res) => {
+  console.log('[API] DELETE /api/questions/:id (delete)', req.params);
   try {
     const q = await Question.findByIdAndDelete(req.params.id);
     if (!q) return res.status(404).json({ message: 'Question not found' });
+    console.log('[DB] Question deleted:', q._id);
     res.json({ message: 'Question deleted' });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -73,6 +82,7 @@ exports.deleteQuestion = async (req, res) => {
 
 // Admin: Upload questions via CSV
 exports.uploadQuestionsCSV = async (req, res) => {
+  console.log('[API] POST /api/questions/upload (CSV upload)', req.file);
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
   const results = [];
   const filePath = req.file.path;
@@ -101,9 +111,31 @@ exports.uploadQuestionsCSV = async (req, res) => {
               examId = examDoc ? examDoc._id : undefined;
             }
 
-            // Basic validation: required fields
-            if (!row.id || !row.question || !examId) {
-              throw new Error('Missing required fields: id, question, or exam');
+            // --- NEW: Parse and require topics and level ---
+            const topics = row.topics ? row.topics.split(',').map(t => t.trim()).filter(Boolean) : [];
+            const level = row.level ? row.level.trim().toLowerCase() : undefined;
+            const type = row.type ? row.type.trim() : 'mock';
+            const section = row.section && row.section.trim() ? row.section.trim() : undefined;
+            const difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
+
+            // --- Validation ---
+            if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
+              throw new Error('Missing required fields: id, question, exam, topics, or level');
+            }
+            if (type === 'mock' && !section) {
+              throw new Error('Section is required for mock questions');
+            }
+
+            // --- NEW: Auto-create TopicSection ---
+            for (const topic of topics) {
+              let topicDoc = await TopicSection.findOne({ topic });
+              if (!topicDoc) {
+                topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
+              } else if (section && !topicDoc.sections.includes(section)) {
+                topicDoc.sections.push(section);
+                topicDoc.updatedAt = new Date();
+                await topicDoc.save();
+              }
             }
 
             const questionObj = {
@@ -115,14 +147,19 @@ exports.uploadQuestionsCSV = async (req, res) => {
               chapter: row.chapter ? row.chapter.trim() : undefined,
               exam: examId,
               day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
-              section: row.section && row.section.trim() ? row.section.trim() : undefined,
-              type: row.type ? row.type.trim() : 'mock',
+              section,
+              type,
               img: row.img || null,
               passage: row.passage || null,
               video: row.video || undefined,
               videoUrl: row.videoUrl || undefined,
               videoStart: row.videoStart ? Number(row.videoStart) : undefined,
-              topics: row.topics ? row.topics.split(',').map(t => t.trim()).filter(Boolean) : []
+              topics,
+              metadata: {
+                ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
+                level
+              },
+              ...(difficulty ? { difficulty } : {})
             };
             const q = await Question.create(questionObj);
             if (row.mock_code) {
@@ -147,6 +184,8 @@ exports.uploadQuestionsCSV = async (req, res) => {
         });
     });
     fs.unlinkSync(filePath); // Clean up
+    if (!errorOccurred) console.log('[DB] CSV upload success, count:', results.length);
+    else console.log('[DB] CSV upload error:', errorMessage);
     if (errorOccurred) {
       return res.status(400).json({ message: errorMessage || 'CSV file contained errors.' });
     }
@@ -154,5 +193,23 @@ exports.uploadQuestionsCSV = async (req, res) => {
   } catch (err) {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     res.status(400).json({ message: err.message || 'Failed to process CSV file.' });
+  }
+};
+
+// GET /api/questions/topic/:topic?level=...&difficulty=...
+exports.getQuestionsByTopic = async (req, res) => {
+  console.log('[API] GET /api/questions/topic/:topic', req.params, req.query);
+  try {
+    const { level, difficulty } = req.query;
+    const topic = req.params.topic;
+    if (!topic) return res.status(400).json({ message: 'Topic is required' });
+    const filter = { topics: topic };
+    if (level) filter['metadata.level'] = level;
+    if (difficulty) filter.difficulty = difficulty;
+    const questions = await Question.find(filter);
+    console.log('[DB] Questions fetched for topic:', req.params.topic, 'Count:', questions.length);
+    res.json(questions);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

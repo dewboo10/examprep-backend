@@ -10,7 +10,12 @@ const User = require('./models/User');
 const Exam = require('./models/Exam');
 const Mock = require('./models/Mock');
 const Question = require('./models/Question');
+// Register new performance tracking models
+const UserPerformance = require('./models/UserPerformance');
+const QuestionAttempt = require('./models/QuestionAttempt');
+const StudySession = require('./models/StudySession');
 const adminActivityRouter = require('./routes/adminActivity');
+const practiceRoutes = require('./routes/practiceRoutes');
 
 dotenv.config();
 const app = express();
@@ -77,6 +82,7 @@ app.use('/api/mock/custom', customMockRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminActivityRouter.router);
 app.use('/api/admin', adminRoutes);
+app.use('/api/practice', practiceRoutes);
 
 
 // ✅ Health check route
@@ -135,4 +141,8 @@ app.listen(PORT, () => {
   console.log('- POST /api/auth/login');
   console.log('- POST /api/mock/submit');
   console.log('- GET  /api/mock');
+  console.log('- GET  /api/questions');
+  console.log('- GET  /api/questions/topic/:topic');
+  console.log('- POST /api/practice/attempt');
+  // ... add more as needed
 });
