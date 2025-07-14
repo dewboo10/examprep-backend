@@ -1,6 +1,0 @@
-id,day,question,section,option1,option2,option3,option4,answerIndex,explanation,exam,chapter,topics,para,img,video,videoUrl,videoStart,type,level,difficulty,mock_code
-M1,1,What is the square root of 16?,QA,2,4,8,16,1,The square root of 16 is 4.,CAT,,Numbers,,, , , , ,mock,easy,easy,CAT-M1
-M2,1,Who discovered gravity?,VARC,Newton,Einstein,Galileo,Tesla,0,Newton discovered gravity.,CAT,,Physics,,, , , , ,mock,medium,medium,CAT-M1
-M3,2,What is H2O?,QA,Oxygen,Hydrogen,Water,Helium,2,H2O is water.,XAT,,Chemistry,,, , , , ,mock,easy,easy,XAT-M2
-M4,3,What is the capital of Japan?,GA,Beijing,Seoul,Tokyo,Bangkok,2,Tokyo is the capital of Japan.,SNAP,,Geography,,, , , , ,mock,medium,medium,SNAP-M3
-M5,2,What is 10/2?,QA,2,5,10,20,1,10 divided by 2 is 5.,NMAT,,Arithmetic,,, , , , ,mock,easy,easy,NMAT-M2 

@@ -1,6 +1,0 @@
-id,day,question,section,option1,option2,option3,option4,answerIndex,explanation,exam,chapter,topics,para,img,video,videoUrl,videoStart,type,level,difficulty
-P1,,What is 2+2?,,1,2,3,4,3,Sum of two and two is four.,CAT,,Arithmetic,,, , , , ,practice,easy,easy
-P2,,Solve x+3=5,,1,2,3,4,1,Subtract 3 from both sides.,CAT,,Algebra,,, , , , ,practice,easy,medium
-P3,,Integrate x^2 dx,,x^3/3,x^2,2x,0,0,Power rule for integration.,XAT,,Calculus,,, , , , ,practice,medium,hard
-P4,,What is the value of log(1)?,,0,1,-1,undefined,0,Logarithm of 1 is 0.,SNAP,,Logarithms,,, , , , ,practice,easy,easy
-P5,,What is the derivative of sin(x)?,,cos(x),-cos(x),sin(x),-sin(x),0,Derivative of sin(x) is cos(x).,NMAT,,Trigonometry,,, , , , ,practice,medium,medium 

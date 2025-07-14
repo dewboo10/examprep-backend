@@ -111,12 +111,18 @@ exports.uploadQuestionsCSV = async (req, res) => {
               examId = examDoc ? examDoc._id : undefined;
             }
 
-            // --- NEW: Parse and require topics and level ---
-            const topics = row.topics ? row.topics.split(',').map(t => t.trim()).filter(Boolean) : [];
-            const level = row.level ? row.level.trim().toLowerCase() : undefined;
+            // --- Parse and normalize topics, section, difficulty, and level ---
+            let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
+            topics = topics.filter(Boolean);
+            let section = row.section && row.section.trim() ? row.section.trim() : undefined;
+            let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
+            let level = row.level ? row.level.trim().toLowerCase() : undefined;
             const type = row.type ? row.type.trim() : 'mock';
-            const section = row.section && row.section.trim() ? row.section.trim() : undefined;
-            const difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
+
+            // If topics missing but section present, optionally map section to topic (customize as needed)
+            if (topics.length === 0 && section) {
+              topics = [section]; // Or use a mapping if you want to map section to a specific topic
+            }
 
             // --- Validation ---
             if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
@@ -126,7 +132,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
               throw new Error('Section is required for mock questions');
             }
 
-            // --- NEW: Auto-create TopicSection ---
+            // --- Auto-create TopicSection and add section if not present ---
             for (const topic of topics) {
               let topicDoc = await TopicSection.findOne({ topic });
               if (!topicDoc) {
@@ -138,6 +144,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
               }
             }
 
+            // --- Build question object ---
             const questionObj = {
               id: row.id ? row.id.trim() : undefined,
               question: row.question ? row.question.trim() : undefined,

@@ -1,10 +1,22 @@
 const TopicSection = require('../models/TopicSection');
+const Question = require('../models/Question');
 
 // GET /api/admin/topics
 exports.getAllTopics = async (req, res) => {
   try {
     const topics = await TopicSection.find({}, 'topic sections');
-    res.json({ success: true, topics });
+    // For each topic, count the number of questions
+    const topicsWithCounts = await Promise.all(
+      topics.map(async (t) => {
+        const count = await Question.countDocuments({ topics: t.topic });
+        return {
+          topic: t.topic,
+          sections: t.sections,
+          questionCount: count
+        };
+      })
+    );
+    res.json({ success: true, topics: topicsWithCounts });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
