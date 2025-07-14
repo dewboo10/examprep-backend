@@ -11,6 +11,7 @@ const dashboardController = require('../controllers/dashboardController');
 const mockController = require('../controllers/mockController');
 const Mock = require('../models/Mock');
 const Question = require('../models/Question');
+const topicController = require('../controllers/topicController');
 
 // Add CORS to all admin routes
 router.use(cors());
@@ -69,5 +70,11 @@ router.delete('/users/:id', auth, authorizeAdmin, deleteUser);
 router.put('/users/:id', auth, authorizeAdmin, updateUser);
 // Admin: Partially update a user
 router.patch('/users/:id', auth, authorizeAdmin, patchUser);
+
+// Admin Topics CRUD
+router.get('/topics', topicController.getAllTopics);
+router.post('/topics', topicController.createTopic);
+router.put('/topics/:topic', topicController.updateTopic);
+router.delete('/topics/:topic', topicController.deleteTopic);
 
 module.exports = router; 
