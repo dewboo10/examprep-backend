@@ -91,104 +91,114 @@ exports.uploadQuestionsCSV = async (req, res) => {
   let errorOccurred = false;
   let errorMessage = '';
   try {
+    const promises = [];
     await new Promise((resolve, reject) => {
       fs.createReadStream(filePath)
         .pipe(csv())
-        .on('data', async (row) => {
+        .on('data', (row) => {
+          promises.push((async () => {
+            try {
+              // Parse options (option1, option2, ... or options as JSON)
+              let options = [];
+              if (row.options) {
+                try { options = JSON.parse(row.options); } catch { options = []; }
+              } else {
+                options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
+              }
+
+              // Resolve exam code to ObjectId
+              let examId = row.exam;
+              if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
+                const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
+                examId = examDoc ? examDoc._id : undefined;
+              }
+
+              // --- Parse and normalize topics, section, difficulty, and level ---
+              let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
+              topics = topics.filter(Boolean);
+              let section = row.section && row.section.trim() ? row.section.trim() : undefined;
+              let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
+              let level = row.level ? row.level.trim().toLowerCase() : undefined;
+              const type = row.type ? row.type.trim() : 'mock';
+
+              // If topics missing but section present, optionally map section to topic (customize as needed)
+              if (topics.length === 0 && section) {
+                topics = [section]; // Or use a mapping if you want to map section to a specific topic
+              }
+
+              // --- Validation ---
+              if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
+                throw new Error('Missing required fields: id, question, exam, topics, or level');
+              }
+              if (type === 'mock') {
+                if (!section) {
+                  throw new Error('Section is required for mock questions');
+                }
+                if (!row.mock_code) {
+                  throw new Error('mock_code is required for mock questions');
+                }
+              }
+
+              // --- Auto-create TopicSection and add section if not present ---
+              for (const topic of topics) {
+                let topicDoc = await TopicSection.findOne({ topic });
+                if (!topicDoc) {
+                  topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
+                } else if (section && !topicDoc.sections.includes(section)) {
+                  topicDoc.sections.push(section);
+                  topicDoc.updatedAt = new Date();
+                  await topicDoc.save();
+                }
+              }
+
+              // --- Build question object ---
+              const questionObj = {
+                id: row.id ? row.id.trim() : undefined,
+                question: row.question ? row.question.trim() : undefined,
+                options,
+                answerIndex: row.answerIndex ? Number(row.answerIndex) : undefined,
+                explanation: row.explanation ? row.explanation.trim() : undefined,
+                chapter: row.chapter ? row.chapter.trim() : undefined,
+                exam: examId,
+                day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
+                section,
+                type,
+                img: row.img || null,
+                passage: row.passage || null,
+                video: row.video || undefined,
+                videoUrl: row.videoUrl || undefined,
+                videoStart: row.videoStart ? Number(row.videoStart) : undefined,
+                topics,
+                metadata: {
+                  ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
+                  level
+                },
+                ...(difficulty ? { difficulty } : {})
+              };
+              const q = await Question.create(questionObj);
+              if (row.mock_code) {
+                const mockDoc = await Mock.findOne({ $or: [{ name: row.mock_code }, { code: row.mock_code }] });
+                if (mockDoc) {
+                  mockDoc.questions.push(q._id);
+                  await mockDoc.save();
+                }
+              }
+              results.push(q);
+            } catch (err) {
+              errorOccurred = true;
+              errorMessage = err.message;
+              reject(new Error('Row error: ' + err.message));
+            }
+          })());
+        })
+        .on('end', async () => {
           try {
-            // Parse options (option1, option2, ... or options as JSON)
-            let options = [];
-            if (row.options) {
-              try { options = JSON.parse(row.options); } catch { options = []; }
-            } else {
-              options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
-            }
-
-            // Resolve exam code to ObjectId
-            let examId = row.exam;
-            if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
-              const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
-              examId = examDoc ? examDoc._id : undefined;
-            }
-
-            // --- Parse and normalize topics, section, difficulty, and level ---
-            let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
-            topics = topics.filter(Boolean);
-            let section = row.section && row.section.trim() ? row.section.trim() : undefined;
-            let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
-            let level = row.level ? row.level.trim().toLowerCase() : undefined;
-            const type = row.type ? row.type.trim() : 'mock';
-
-            // If topics missing but section present, optionally map section to topic (customize as needed)
-            if (topics.length === 0 && section) {
-              topics = [section]; // Or use a mapping if you want to map section to a specific topic
-            }
-
-            // --- Validation ---
-            if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
-              throw new Error('Missing required fields: id, question, exam, topics, or level');
-            }
-            if (type === 'mock') {
-              if (!section) {
-                throw new Error('Section is required for mock questions');
-              }
-              if (!row.mock_code) {
-                throw new Error('mock_code is required for mock questions');
-              }
-            }
-
-            // --- Auto-create TopicSection and add section if not present ---
-            for (const topic of topics) {
-              let topicDoc = await TopicSection.findOne({ topic });
-              if (!topicDoc) {
-                topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
-              } else if (section && !topicDoc.sections.includes(section)) {
-                topicDoc.sections.push(section);
-                topicDoc.updatedAt = new Date();
-                await topicDoc.save();
-              }
-            }
-
-            // --- Build question object ---
-            const questionObj = {
-              id: row.id ? row.id.trim() : undefined,
-              question: row.question ? row.question.trim() : undefined,
-              options,
-              answerIndex: row.answerIndex ? Number(row.answerIndex) : undefined,
-              explanation: row.explanation ? row.explanation.trim() : undefined,
-              chapter: row.chapter ? row.chapter.trim() : undefined,
-              exam: examId,
-              day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
-              section,
-              type,
-              img: row.img || null,
-              passage: row.passage || null,
-              video: row.video || undefined,
-              videoUrl: row.videoUrl || undefined,
-              videoStart: row.videoStart ? Number(row.videoStart) : undefined,
-              topics,
-              metadata: {
-                ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
-                level
-              },
-              ...(difficulty ? { difficulty } : {})
-            };
-            const q = await Question.create(questionObj);
-            if (row.mock_code) {
-              const mockDoc = await Mock.findOne({ $or: [{ name: row.mock_code }, { code: row.mock_code }] });
-              if (mockDoc) {
-                mockDoc.questions.push(q._id);
-                await mockDoc.save();
-              }
-            }
-            results.push(q);
+            await Promise.all(promises);
+            resolve();
           } catch (err) {
-            errorOccurred = true;
-            errorMessage = err.message;
-            reject(new Error('Row error: ' + err.message));
+            reject(err);
           }
         })
-        .on('end', resolve)
         .on('error', (err) => {
           errorOccurred = true;
           errorMessage = err.message;
