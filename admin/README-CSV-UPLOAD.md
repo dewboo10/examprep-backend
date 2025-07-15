@@ -19,7 +19,6 @@ This document explains the required and optional fields for uploading practice a
 | topics      | Comma-separated list of topics                   | Both         | Arithmetic,Algebra     |
 | type        | 'practice' or 'mock'                             | Both         | practice               |
 | level       | Difficulty level (easy, medium, hard, other)     | Both         | easy                   |
-| difficulty  | Initial difficulty (easy, medium, hard)          | Both         | easy                   |
 
 ---
 
@@ -56,7 +55,7 @@ This document explains the required and optional fields for uploading practice a
 - **Type:** Use 'practice' for practice questions, 'mock' for mock questions.
 - **Section:** Required for mocks, optional for practice.
 - **mock_code:** Required for mocks to link questions to a specific mock test.
-- **Level & Difficulty:** Use for organizing and filtering questions in the app.
+- **Level:** Use for organizing and filtering questions in the app.
 - **No formulas or merged cells:** Keep the CSV plain and simple.
 - **UTF-8 encoding:** Save your CSV as UTF-8 for best compatibility.
 

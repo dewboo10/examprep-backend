@@ -77,4 +77,11 @@ router.post('/topics', topicController.createTopic);
 router.put('/topics/:topic', topicController.updateTopic);
 router.delete('/topics/:topic', topicController.deleteTopic);
 
+// Admin: Download CSV upload instructions README
+const path = require('path');
+router.get('/download-csv-readme', auth, authorizeAdmin, (req, res) => {
+  const filePath = path.resolve(__dirname, '../admin/README-CSV-UPLOAD.md');
+  res.download(filePath, 'CSV-Upload-Instructions.md');
+});
+
 module.exports = router; 
