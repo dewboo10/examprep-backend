@@ -25,7 +25,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://127.0.0.1:5500',
-    'https://tubular-entremet-8f2a2a.netlify.app'
+    'https://parikshaprep.in'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

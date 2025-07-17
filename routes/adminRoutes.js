@@ -14,7 +14,16 @@ const Question = require('../models/Question');
 const topicController = require('../controllers/topicController');
 
 // Add CORS to all admin routes
-router.use(cors());
+router.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:5500',
+    'https://parikshaprep.in'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 // Test admin-only route
 router.get('/test-admin', auth, authorizeAdmin, (req, res) => {
