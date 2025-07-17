@@ -11,12 +11,11 @@ const transporter = nodemailer.createTransport({
 
 const sendOTPEmail = (to, otp) => {
   return transporter.sendMail({
-    from: `"Exam Prep Arena" <${process.env.EMAIL_USER}>`,
+    from: `"ParikshaPrep" <${process.env.EMAIL_USER}>`,
     to,
     subject: "Your OTP for Exam Prep Login",
-    text: `Your OTP is: ${otp}
-    Please use this OTP to complete your login process.
-    Start your journey from today only with us!`,
+    text: `Your OTP is: ${otp}\n\nPlease use this OTP to complete your login process.\nStart your journey from today only with us!`,
+    html: `<p>Your OTP is: <b>${otp}</b></p><p>Please use this OTP to complete your login process.<br>Start your journey from today only with us!</p>`
   });
 };
 
