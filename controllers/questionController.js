@@ -218,6 +218,8 @@ exports.uploadQuestionsCSV = async (req, res) => {
     toInsert.push(questionObj);
   }
 
+  console.log('Questions to insert:', toInsert.length);
+
   if (errors.length > 0) {
     console.log('CSV upload errors:', errors);
     fs.unlinkSync(filePath);
