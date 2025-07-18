@@ -260,10 +260,8 @@ exports.uploadQuestionsCSV = async (req, res) => {
 
     if (errors.length > 0) {
       console.log('CSV upload errors:', errors);
-      global.uploadProgress[uploadId].status = 'error';
       global.uploadProgress[uploadId].errors = errors;
-      fs.unlinkSync(filePath);
-      return;
+      // Do NOT return; continue to insert valid rows
     }
 
     // If all good, insert all questions with a timeout and more logging
@@ -276,6 +274,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
       console.log('InsertMany result:', result.length, 'documents inserted');
       global.uploadProgress[uploadId].status = 'done';
       global.uploadProgress[uploadId].inserted = result.length;
+      // errors already included if any
       fs.unlinkSync(filePath);
     } catch (err) {
       console.error('InsertMany error:', err);
