@@ -5,6 +5,7 @@ const TopicSection = require('../models/TopicSection');
 const streamifier = require('streamifier');
 
 exports.getQuestions = async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   console.log('[API] GET /api/questions', req.query);
   const { exam, day } = req.query;
   if (!exam || !day) {
@@ -228,6 +229,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
 
   // If all good, insert all questions
   try {
+    console.log('Inserting questions into DB...');
     await Question.insertMany(toInsert);
     console.log('Successfully inserted questions:', toInsert.length);
     fs.unlinkSync(filePath);
