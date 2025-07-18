@@ -36,8 +36,7 @@ router.post('/questions', auth, authorizeAdmin, questionController.createQuestio
 router.put('/questions/:id', auth, authorizeAdmin, questionController.updateQuestion); // Update
 router.delete('/questions/:id', auth, authorizeAdmin, questionController.deleteQuestion); // Delete
 router.post('/questions/upload-csv', auth, authorizeAdmin, upload.single('file'), require('../controllers/questionController').uploadQuestionsCSV);
-// Add this route for deleting all questions by topic
-router.delete('/questions/topic/:topic', auth, authorizeAdmin, questionController.deleteQuestionsByTopic);
+// router.delete('/questions/topic/:topic', auth, authorizeAdmin, questionController.deleteQuestionsByTopic); // (TEMPORARY/REMOVED)
 router.get('/stats', auth, authorizeAdmin, dashboardController.adminStats);
 
 // Admin Mocks CRUD
