@@ -108,21 +108,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
   const toInsert = [];
   for (let i = 0; i < questions.length; i++) {
     const row = questions[i];
-    // Compose unique key for duplicate check
-    const key = `${row.exam}-${row.day}-${row.section}-${row.id}`;
-    if (uniqueSet.has(key)) {
-      errors.push(`Row ${i + 1}: Duplicate in CSV: ${key}`);
-      continue;
-    } else {
-      uniqueSet.add(key);
-    }
-    // Check for duplicates in DB
-    const exists = await Question.findOne({ exam: row.exam, day: row.day, section: row.section, id: row.id });
-    if (exists) {
-      errors.push(`Row ${i + 1}: Duplicate in DB: ${key}`);
-      continue;
-    }
-    // Validate and resolve exam
+    // 1. Resolve examId FIRST
     let examId = row.exam;
     if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
       const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
@@ -132,6 +118,20 @@ exports.uploadQuestionsCSV = async (req, res) => {
         errors.push(`Row ${i + 1}: Exam code or name "${row.exam}" not found in database`);
         continue;
       }
+    }
+    // Compose unique key for duplicate check (use examId)
+    const key = `${examId}-${row.day}-${row.section}-${row.id}`;
+    if (uniqueSet.has(key)) {
+      errors.push(`Row ${i + 1}: Duplicate in CSV: ${key}`);
+      continue;
+    } else {
+      uniqueSet.add(key);
+    }
+    // Check for duplicates in DB (use examId)
+    const exists = await Question.findOne({ exam: examId, day: row.day, section: row.section, id: row.id });
+    if (exists) {
+      errors.push(`Row ${i + 1}: Duplicate in DB: ${key}`);
+      continue;
     }
     // Validate and cast day
     let day = row.day;
