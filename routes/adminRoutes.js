@@ -39,6 +39,9 @@ router.post('/questions/upload-csv', auth, authorizeAdmin, upload.single('file')
 // router.delete('/questions/topic/:topic', auth, authorizeAdmin, questionController.deleteQuestionsByTopic); // (TEMPORARY/REMOVED)
 router.get('/stats', auth, authorizeAdmin, dashboardController.adminStats);
 
+// Add upload progress endpoint for polling
+router.get('/questions/upload-progress/:uploadId', auth, authorizeAdmin, questionController.getUploadProgress);
+
 // Admin Mocks CRUD
 router.get('/mocks', auth, authorizeAdmin, mockController.getMocks); // List
 router.post('/mocks', auth, authorizeAdmin, mockController.createMock); // Create
