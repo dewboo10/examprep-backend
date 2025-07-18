@@ -20,6 +20,12 @@ router.get('/activity', auth, adminAuth, async (req, res) => {
   }
 });
 
+// GET /api/admin/activity - Get admin activity
+router.get('/', auth, adminAuth, async (req, res) => {
+  // Example: return recent admin activity or a placeholder
+  res.json({ message: 'Admin activity endpoint is working!' });
+});
+
 // Helper function to log admin activity
 async function logAdminActivity(type, adminId, adminName, title, description, details = {}) {
   try {
@@ -37,4 +43,4 @@ async function logAdminActivity(type, adminId, adminName, title, description, de
   }
 }
 
-module.exports = { router, logAdminActivity }; 
+module.exports = router; 
