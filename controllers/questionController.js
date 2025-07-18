@@ -104,6 +104,9 @@ exports.uploadQuestionsCSV = async (req, res) => {
       .on('error', reject);
   });
 
+  console.log('CSV parsed, number of rows:', questions.length);
+  console.log('Errors collected:', errors.length);
+
   // Validate all rows and resolve references
   const toInsert = [];
   for (let i = 0; i < questions.length; i++) {
@@ -216,6 +219,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
   }
 
   if (errors.length > 0) {
+    console.log('CSV upload errors:', errors);
     fs.unlinkSync(filePath);
     return res.status(400).json({ errors });
   }
@@ -223,6 +227,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
   // If all good, insert all questions
   try {
     await Question.insertMany(toInsert);
+    console.log('Successfully inserted questions:', toInsert.length);
     fs.unlinkSync(filePath);
     res.json({ message: `Successfully uploaded ${toInsert.length} questions.` });
   } catch (err) {
