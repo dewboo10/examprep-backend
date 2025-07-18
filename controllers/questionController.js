@@ -112,111 +112,116 @@ exports.uploadQuestionsCSV = async (req, res) => {
   const toInsert = [];
   for (let i = 0; i < questions.length; i++) {
     const row = questions[i];
-    // 1. Resolve examId FIRST
-    let examId = row.exam;
-    if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
-      const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
-      if (examDoc) {
-        examId = examDoc._id;
+    try { // Add try/catch for each row
+      // 1. Resolve examId FIRST
+      let examId = row.exam;
+      if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
+        const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
+        if (examDoc) {
+          examId = examDoc._id;
+        } else {
+          errors.push(`Row ${i + 1}: Exam code or name "${row.exam}" not found in database`);
+          continue;
+        }
+      }
+      // Compose unique key for duplicate check (use examId)
+      const key = `${examId}-${row.day}-${row.section}-${row.id}`;
+      if (uniqueSet.has(key)) {
+        errors.push(`Row ${i + 1}: Duplicate in CSV: ${key}`);
+        continue;
       } else {
-        errors.push(`Row ${i + 1}: Exam code or name "${row.exam}" not found in database`);
+        uniqueSet.add(key);
+      }
+      // Check for duplicates in DB (use examId)
+      const exists = await Question.findOne({ exam: examId, day: row.day, section: row.section, id: row.id });
+      if (exists) {
+        errors.push(`Row ${i + 1}: Duplicate in DB: ${key}`);
         continue;
       }
-    }
-    // Compose unique key for duplicate check (use examId)
-    const key = `${examId}-${row.day}-${row.section}-${row.id}`;
-    if (uniqueSet.has(key)) {
-      errors.push(`Row ${i + 1}: Duplicate in CSV: ${key}`);
-      continue;
-    } else {
-      uniqueSet.add(key);
-    }
-    // Check for duplicates in DB (use examId)
-    const exists = await Question.findOne({ exam: examId, day: row.day, section: row.section, id: row.id });
-    if (exists) {
-      errors.push(`Row ${i + 1}: Duplicate in DB: ${key}`);
-      continue;
-    }
-    // Validate and cast day
-    let day = row.day;
-    if (day && typeof day === 'string') {
-      day = day.trim();
-      if (day && !isNaN(day)) day = Number(day);
-      else day = undefined;
-    }
-    // Validate and cast answerIndex
-    let answerIndex = row.answerIndex;
-    if (answerIndex && typeof answerIndex === 'string') {
-      answerIndex = answerIndex.trim();
-      if (answerIndex && !isNaN(answerIndex)) answerIndex = Number(answerIndex);
-      else answerIndex = undefined;
-    }
-    // Parse options
-    let options = [];
-    if (row.options) {
-      try { options = JSON.parse(row.options); } catch { options = []; }
-    } else {
-      options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
-    }
-    // Parse and normalize topics, section, difficulty, and level
-    let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
-    topics = topics.filter(Boolean);
-    let section = row.section && row.section.trim() ? row.section.trim() : undefined;
-    let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
-    let level = row.level ? row.level.trim().toLowerCase() : undefined;
-    const type = row.type ? row.type.trim() : 'mock';
-    if (topics.length === 0 && section) topics = [section];
-    // Validate required fields
-    if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
-      errors.push(`Row ${i + 1}: Missing required fields (id, question, exam, topics, or level)`);
-      continue;
-    }
-    if (type === 'mock') {
-      if (!section) {
-        errors.push(`Row ${i + 1}: Section is required for mock questions`);
+      // Validate and cast day
+      let day = row.day;
+      if (day && typeof day === 'string') {
+        day = day.trim();
+        if (day && !isNaN(day)) day = Number(day);
+        else day = undefined;
+      }
+      // Validate and cast answerIndex
+      let answerIndex = row.answerIndex;
+      if (answerIndex && typeof answerIndex === 'string') {
+        answerIndex = answerIndex.trim();
+        if (answerIndex && !isNaN(answerIndex)) answerIndex = Number(answerIndex);
+        else answerIndex = undefined;
+      }
+      // Parse options
+      let options = [];
+      if (row.options) {
+        try { options = JSON.parse(row.options); } catch { options = []; }
+      } else {
+        options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
+      }
+      // Parse and normalize topics, section, difficulty, and level
+      let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
+      topics = topics.filter(Boolean);
+      let section = row.section && row.section.trim() ? row.section.trim() : undefined;
+      let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
+      let level = row.level ? row.level.trim().toLowerCase() : undefined;
+      const type = row.type ? row.type.trim() : 'mock';
+      if (topics.length === 0 && section) topics = [section];
+      // Validate required fields
+      if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
+        errors.push(`Row ${i + 1}: Missing required fields (id, question, exam, topics, or level)`);
         continue;
       }
-      if (!row.mock_code) {
-        errors.push(`Row ${i + 1}: mock_code is required for mock questions`);
-        continue;
+      if (type === 'mock') {
+        if (!section) {
+          errors.push(`Row ${i + 1}: Section is required for mock questions`);
+          continue;
+        }
+        if (!row.mock_code) {
+          errors.push(`Row ${i + 1}: mock_code is required for mock questions`);
+          continue;
+        }
       }
-    }
-    // Auto-create TopicSection and add section if not present
-    for (const topic of topics) {
-      let topicDoc = await TopicSection.findOne({ topic });
-      if (!topicDoc) {
-        topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
-      } else if (section && !topicDoc.sections.includes(section)) {
-        topicDoc.sections.push(section);
-        topicDoc.updatedAt = new Date();
-        await topicDoc.save();
+      // Auto-create TopicSection and add section if not present
+      for (const topic of topics) {
+        let topicDoc = await TopicSection.findOne({ topic });
+        if (!topicDoc) {
+          topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
+        } else if (section && !topicDoc.sections.includes(section)) {
+          topicDoc.sections.push(section);
+          topicDoc.updatedAt = new Date();
+          await topicDoc.save();
+        }
       }
+      // Build question object
+      const questionObj = {
+        id: row.id ? row.id.trim() : undefined,
+        question: row.question ? row.question.trim() : undefined,
+        options,
+        answerIndex,
+        explanation: row.explanation ? row.explanation.trim() : undefined,
+        chapter: row.chapter ? row.chapter.trim() : undefined,
+        exam: examId,
+        day,
+        section,
+        type,
+        img: row.img || null,
+        passage: row.passage || null,
+        video: row.video || undefined,
+        videoUrl: row.videoUrl || undefined,
+        videoStart: row.videoStart ? Number(row.videoStart) : undefined,
+        topics,
+        metadata: {
+          ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
+          level
+        },
+        ...(difficulty ? { difficulty } : {})
+      };
+      toInsert.push(questionObj);
+    } catch (rowError) {
+      errors.push(`Row ${i + 1}: Processing error: ${rowError.message}`);
+      console.error(`Error processing row ${i + 1}:`, rowError);
     }
-    // Build question object
-    const questionObj = {
-      id: row.id ? row.id.trim() : undefined,
-      question: row.question ? row.question.trim() : undefined,
-      options,
-      answerIndex,
-      explanation: row.explanation ? row.explanation.trim() : undefined,
-      chapter: row.chapter ? row.chapter.trim() : undefined,
-      exam: examId,
-      day,
-      section,
-      type,
-      img: row.img || null,
-      passage: row.passage || null,
-      video: row.video || undefined,
-      videoUrl: row.videoUrl || undefined,
-      videoStart: row.videoStart ? Number(row.videoStart) : undefined,
-      topics,
-      metadata: {
-        ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
-        level
-      },
-      ...(difficulty ? { difficulty } : {})
-    };
-    toInsert.push(questionObj);
   }
 
   console.log('Questions to insert:', toInsert.length);
@@ -227,16 +232,19 @@ exports.uploadQuestionsCSV = async (req, res) => {
     return res.status(400).json({ errors });
   }
 
-  // If all good, insert all questions
+  // If all good, insert all questions with a timeout and more logging
   try {
     console.log('Inserting questions into DB...');
-    await Question.insertMany(toInsert);
-    console.log('Successfully inserted questions:', toInsert.length);
+    const insertPromise = Question.insertMany(toInsert, { ordered: false });
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Insert timed out')), 20000));
+    const result = await Promise.race([insertPromise, timeoutPromise]);
+    console.log('InsertMany result:', result.length, 'documents inserted');
     fs.unlinkSync(filePath);
-    res.json({ message: `Successfully uploaded ${toInsert.length} questions.` });
+    res.json({ message: `Successfully uploaded ${result.length} questions.` });
   } catch (err) {
+    console.error('InsertMany error:', err);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    res.status(500).json({ error: 'Failed to insert questions', details: err.message });
+    res.status(500).json({ error: 'Failed to insert questions', details: err, message: err.message });
   }
 };
 
