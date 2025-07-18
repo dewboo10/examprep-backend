@@ -80,7 +80,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/mock/custom', customMockRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/admin', adminActivityRouter.router);
+// app.use('/api/admin', adminActivityRouter.router); // Commented out to prevent route conflict
 app.use('/api/admin', adminRoutes);
 app.use('/api/practice', practiceRoutes);
 
