@@ -90,14 +90,12 @@ exports.uploadQuestionsCSV = async (req, res) => {
   const TopicSection = require('../models/TopicSection');
   const filePath = req.file.path;
   let fileContent = fs.readFileSync(filePath, 'utf8');
-  // Strip BOM if present
   if (fileContent.charCodeAt(0) === 0xFEFF) fileContent = fileContent.slice(1);
 
   const questions = [];
   const errors = [];
   const uniqueSet = new Set();
 
-  // Parse CSV in memory
   await new Promise((resolve, reject) => {
     streamifier.createReadStream(fileContent)
       .pipe(csv())
@@ -106,7 +104,8 @@ exports.uploadQuestionsCSV = async (req, res) => {
       .on('error', reject);
   });
 
-  // Validate all rows
+  // Validate all rows and resolve references
+  const toInsert = [];
   for (let i = 0; i < questions.length; i++) {
     const row = questions[i];
     // Compose unique key for duplicate check
@@ -121,15 +120,99 @@ exports.uploadQuestionsCSV = async (req, res) => {
     const exists = await Question.findOne({ exam: row.exam, day: row.day, section: row.section, id: row.id });
     if (exists) {
       errors.push(`Row ${i + 1}: Duplicate in DB: ${key}`);
+      continue;
     }
+    // Validate and resolve exam
+    let examId = row.exam;
+    if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
+      const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
+      if (examDoc) {
+        examId = examDoc._id;
+      } else {
+        errors.push(`Row ${i + 1}: Exam code or name "${row.exam}" not found in database`);
+        continue;
+      }
+    }
+    // Validate and cast day
+    let day = row.day;
+    if (day && typeof day === 'string') {
+      day = day.trim();
+      if (day && !isNaN(day)) day = Number(day);
+      else day = undefined;
+    }
+    // Validate and cast answerIndex
+    let answerIndex = row.answerIndex;
+    if (answerIndex && typeof answerIndex === 'string') {
+      answerIndex = answerIndex.trim();
+      if (answerIndex && !isNaN(answerIndex)) answerIndex = Number(answerIndex);
+      else answerIndex = undefined;
+    }
+    // Parse options
+    let options = [];
+    if (row.options) {
+      try { options = JSON.parse(row.options); } catch { options = []; }
+    } else {
+      options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
+    }
+    // Parse and normalize topics, section, difficulty, and level
+    let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
+    topics = topics.filter(Boolean);
+    let section = row.section && row.section.trim() ? row.section.trim() : undefined;
+    let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
+    let level = row.level ? row.level.trim().toLowerCase() : undefined;
+    const type = row.type ? row.type.trim() : 'mock';
+    if (topics.length === 0 && section) topics = [section];
     // Validate required fields
-    if (!row.id || !row.question || !row.exam || !row.topics || !row.level) {
+    if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
       errors.push(`Row ${i + 1}: Missing required fields (id, question, exam, topics, or level)`);
+      continue;
     }
-    if (row.type === 'mock') {
-      if (!row.section) errors.push(`Row ${i + 1}: Section is required for mock questions`);
-      if (!row.mock_code) errors.push(`Row ${i + 1}: mock_code is required for mock questions`);
+    if (type === 'mock') {
+      if (!section) {
+        errors.push(`Row ${i + 1}: Section is required for mock questions`);
+        continue;
+      }
+      if (!row.mock_code) {
+        errors.push(`Row ${i + 1}: mock_code is required for mock questions`);
+        continue;
+      }
     }
+    // Auto-create TopicSection and add section if not present
+    for (const topic of topics) {
+      let topicDoc = await TopicSection.findOne({ topic });
+      if (!topicDoc) {
+        topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
+      } else if (section && !topicDoc.sections.includes(section)) {
+        topicDoc.sections.push(section);
+        topicDoc.updatedAt = new Date();
+        await topicDoc.save();
+      }
+    }
+    // Build question object
+    const questionObj = {
+      id: row.id ? row.id.trim() : undefined,
+      question: row.question ? row.question.trim() : undefined,
+      options,
+      answerIndex,
+      explanation: row.explanation ? row.explanation.trim() : undefined,
+      chapter: row.chapter ? row.chapter.trim() : undefined,
+      exam: examId,
+      day,
+      section,
+      type,
+      img: row.img || null,
+      passage: row.passage || null,
+      video: row.video || undefined,
+      videoUrl: row.videoUrl || undefined,
+      videoStart: row.videoStart ? Number(row.videoStart) : undefined,
+      topics,
+      metadata: {
+        ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
+        level
+      },
+      ...(difficulty ? { difficulty } : {})
+    };
+    toInsert.push(questionObj);
   }
 
   if (errors.length > 0) {
@@ -137,69 +220,8 @@ exports.uploadQuestionsCSV = async (req, res) => {
     return res.status(400).json({ errors });
   }
 
-  // If all good, build and insert all questions
+  // If all good, insert all questions
   try {
-    const toInsert = [];
-    for (const row of questions) {
-      // Parse options
-      let options = [];
-      if (row.options) {
-        try { options = JSON.parse(row.options); } catch { options = []; }
-      } else {
-        options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
-      }
-      // Resolve exam code to ObjectId
-      let examId = row.exam;
-      if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
-        const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
-        examId = examDoc ? examDoc._id : undefined;
-      }
-      // Parse and normalize topics, section, difficulty, and level
-      let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
-      topics = topics.filter(Boolean);
-      let section = row.section && row.section.trim() ? row.section.trim() : undefined;
-      let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
-      let level = row.level ? row.level.trim().toLowerCase() : undefined;
-      const type = row.type ? row.type.trim() : 'mock';
-      // If topics missing but section present, optionally map section to topic
-      if (topics.length === 0 && section) topics = [section];
-      // Auto-create TopicSection and add section if not present
-      for (const topic of topics) {
-        let topicDoc = await TopicSection.findOne({ topic });
-        if (!topicDoc) {
-          topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
-        } else if (section && !topicDoc.sections.includes(section)) {
-          topicDoc.sections.push(section);
-          topicDoc.updatedAt = new Date();
-          await topicDoc.save();
-        }
-      }
-      // Build question object
-      const questionObj = {
-        id: row.id ? row.id.trim() : undefined,
-        question: row.question ? row.question.trim() : undefined,
-        options,
-        answerIndex: row.answerIndex ? Number(row.answerIndex) : undefined,
-        explanation: row.explanation ? row.explanation.trim() : undefined,
-        chapter: row.chapter ? row.chapter.trim() : undefined,
-        exam: examId,
-        day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
-        section,
-        type,
-        img: row.img || null,
-        passage: row.passage || null,
-        video: row.video || undefined,
-        videoUrl: row.videoUrl || undefined,
-        videoStart: row.videoStart ? Number(row.videoStart) : undefined,
-        topics,
-        metadata: {
-          ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
-          level
-        },
-        ...(difficulty ? { difficulty } : {})
-      };
-      toInsert.push(questionObj);
-    }
     await Question.insertMany(toInsert);
     fs.unlinkSync(filePath);
     res.json({ message: `Successfully uploaded ${toInsert.length} questions.` });
