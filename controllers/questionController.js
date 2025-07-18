@@ -111,6 +111,7 @@ exports.uploadQuestionsCSV = async (req, res) => {
   // Validate all rows and resolve references
   const toInsert = [];
   for (let i = 0; i < questions.length; i++) {
+    if (i % 50 === 0) console.log(`Processing row ${i + 1} of ${questions.length}`);
     const row = questions[i];
     try { // Add try/catch for each row
       // 1. Resolve examId FIRST
