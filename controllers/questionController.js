@@ -2,6 +2,7 @@ const Question = require('../models/Question');
 const csv = require('csv-parser');
 const fs = require('fs');
 const TopicSection = require('../models/TopicSection');
+const streamifier = require('streamifier');
 
 exports.getQuestions = async (req, res) => {
   console.log('[API] GET /api/questions', req.query);
@@ -84,137 +85,127 @@ exports.deleteQuestion = async (req, res) => {
 exports.uploadQuestionsCSV = async (req, res) => {
   console.log('[API] POST /api/questions/upload (CSV upload)', req.file);
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-  const results = [];
-  const filePath = req.file.path;
   const Exam = require('../models/Exam');
   const Mock = require('../models/Mock');
-  let errorOccurred = false;
-  let errorMessage = '';
-  try {
-    const promises = [];
-    await new Promise((resolve, reject) => {
-      fs.createReadStream(filePath)
-        .pipe(csv())
-        .on('data', (row) => {
-          promises.push((async () => {
-            try {
-              // Parse options (option1, option2, ... or options as JSON)
-              let options = [];
-              if (row.options) {
-                try { options = JSON.parse(row.options); } catch { options = []; }
-              } else {
-                options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
-              }
+  const TopicSection = require('../models/TopicSection');
+  const filePath = req.file.path;
+  let fileContent = fs.readFileSync(filePath, 'utf8');
+  // Strip BOM if present
+  if (fileContent.charCodeAt(0) === 0xFEFF) fileContent = fileContent.slice(1);
 
-              // Resolve exam code to ObjectId
-              let examId = row.exam;
-              if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
-                const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
-                examId = examDoc ? examDoc._id : undefined;
-              }
+  const questions = [];
+  const errors = [];
+  const uniqueSet = new Set();
 
-              // --- Parse and normalize topics, section, difficulty, and level ---
-              let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
-              topics = topics.filter(Boolean);
-              let section = row.section && row.section.trim() ? row.section.trim() : undefined;
-              let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
-              let level = row.level ? row.level.trim().toLowerCase() : undefined;
-              const type = row.type ? row.type.trim() : 'mock';
+  // Parse CSV in memory
+  await new Promise((resolve, reject) => {
+    streamifier.createReadStream(fileContent)
+      .pipe(csv())
+      .on('data', row => questions.push(row))
+      .on('end', resolve)
+      .on('error', reject);
+  });
 
-              // If topics missing but section present, optionally map section to topic (customize as needed)
-              if (topics.length === 0 && section) {
-                topics = [section]; // Or use a mapping if you want to map section to a specific topic
-              }
-
-              // --- Validation ---
-              if (!row.id || !row.question || !examId || topics.length === 0 || !level) {
-                throw new Error('Missing required fields: id, question, exam, topics, or level');
-              }
-              if (type === 'mock') {
-                if (!section) {
-                  throw new Error('Section is required for mock questions');
-                }
-                if (!row.mock_code) {
-                  throw new Error('mock_code is required for mock questions');
-                }
-              }
-
-              // --- Auto-create TopicSection and add section if not present ---
-              for (const topic of topics) {
-                let topicDoc = await TopicSection.findOne({ topic });
-                if (!topicDoc) {
-                  topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
-                } else if (section && !topicDoc.sections.includes(section)) {
-                  topicDoc.sections.push(section);
-                  topicDoc.updatedAt = new Date();
-                  await topicDoc.save();
-                }
-              }
-
-              // --- Build question object ---
-              const questionObj = {
-                id: row.id ? row.id.trim() : undefined,
-                question: row.question ? row.question.trim() : undefined,
-                options,
-                answerIndex: row.answerIndex ? Number(row.answerIndex) : undefined,
-                explanation: row.explanation ? row.explanation.trim() : undefined,
-                chapter: row.chapter ? row.chapter.trim() : undefined,
-                exam: examId,
-                day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
-                section,
-                type,
-                img: row.img || null,
-                passage: row.passage || null,
-                video: row.video || undefined,
-                videoUrl: row.videoUrl || undefined,
-                videoStart: row.videoStart ? Number(row.videoStart) : undefined,
-                topics,
-                metadata: {
-                  ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
-                  level
-                },
-                ...(difficulty ? { difficulty } : {})
-              };
-              const q = await Question.create(questionObj);
-              if (row.mock_code) {
-                const mockDoc = await Mock.findOne({ $or: [{ name: row.mock_code }, { code: row.mock_code }] });
-                if (mockDoc) {
-                  mockDoc.questions.push(q._id);
-                  await mockDoc.save();
-                }
-              }
-              results.push(q);
-            } catch (err) {
-              errorOccurred = true;
-              errorMessage = err.message;
-              reject(new Error('Row error: ' + err.message));
-            }
-          })());
-        })
-        .on('end', async () => {
-          try {
-            await Promise.all(promises);
-            resolve();
-          } catch (err) {
-            reject(err);
-          }
-        })
-        .on('error', (err) => {
-          errorOccurred = true;
-          errorMessage = err.message;
-          reject(new Error('CSV parsing error: ' + err.message));
-        });
-    });
-    fs.unlinkSync(filePath); // Clean up
-    if (!errorOccurred) console.log('[DB] CSV upload success, count:', results.length);
-    else console.log('[DB] CSV upload error:', errorMessage);
-    if (errorOccurred) {
-      return res.status(400).json({ message: errorMessage || 'CSV file contained errors.' });
+  // Validate all rows
+  for (let i = 0; i < questions.length; i++) {
+    const row = questions[i];
+    // Compose unique key for duplicate check
+    const key = `${row.exam}-${row.day}-${row.section}-${row.id}`;
+    if (uniqueSet.has(key)) {
+      errors.push(`Row ${i + 1}: Duplicate in CSV: ${key}`);
+      continue;
+    } else {
+      uniqueSet.add(key);
     }
-    res.json({ success: true, count: results.length });
+    // Check for duplicates in DB
+    const exists = await Question.findOne({ exam: row.exam, day: row.day, section: row.section, id: row.id });
+    if (exists) {
+      errors.push(`Row ${i + 1}: Duplicate in DB: ${key}`);
+    }
+    // Validate required fields
+    if (!row.id || !row.question || !row.exam || !row.topics || !row.level) {
+      errors.push(`Row ${i + 1}: Missing required fields (id, question, exam, topics, or level)`);
+    }
+    if (row.type === 'mock') {
+      if (!row.section) errors.push(`Row ${i + 1}: Section is required for mock questions`);
+      if (!row.mock_code) errors.push(`Row ${i + 1}: mock_code is required for mock questions`);
+    }
+  }
+
+  if (errors.length > 0) {
+    fs.unlinkSync(filePath);
+    return res.status(400).json({ errors });
+  }
+
+  // If all good, build and insert all questions
+  try {
+    const toInsert = [];
+    for (const row of questions) {
+      // Parse options
+      let options = [];
+      if (row.options) {
+        try { options = JSON.parse(row.options); } catch { options = []; }
+      } else {
+        options = [row.option1, row.option2, row.option3, row.option4].filter(Boolean);
+      }
+      // Resolve exam code to ObjectId
+      let examId = row.exam;
+      if (examId && !examId.match(/^[0-9a-fA-F]{24}$/)) {
+        const examDoc = await Exam.findOne({ $or: [{ code: row.exam }, { name: row.exam }] });
+        examId = examDoc ? examDoc._id : undefined;
+      }
+      // Parse and normalize topics, section, difficulty, and level
+      let topics = row.topics ? row.topics.split(',').map(t => t.trim()) : [];
+      topics = topics.filter(Boolean);
+      let section = row.section && row.section.trim() ? row.section.trim() : undefined;
+      let difficulty = row.difficulty ? row.difficulty.trim().toLowerCase() : undefined;
+      let level = row.level ? row.level.trim().toLowerCase() : undefined;
+      const type = row.type ? row.type.trim() : 'mock';
+      // If topics missing but section present, optionally map section to topic
+      if (topics.length === 0 && section) topics = [section];
+      // Auto-create TopicSection and add section if not present
+      for (const topic of topics) {
+        let topicDoc = await TopicSection.findOne({ topic });
+        if (!topicDoc) {
+          topicDoc = await TopicSection.create({ topic, sections: section ? [section] : [] });
+        } else if (section && !topicDoc.sections.includes(section)) {
+          topicDoc.sections.push(section);
+          topicDoc.updatedAt = new Date();
+          await topicDoc.save();
+        }
+      }
+      // Build question object
+      const questionObj = {
+        id: row.id ? row.id.trim() : undefined,
+        question: row.question ? row.question.trim() : undefined,
+        options,
+        answerIndex: row.answerIndex ? Number(row.answerIndex) : undefined,
+        explanation: row.explanation ? row.explanation.trim() : undefined,
+        chapter: row.chapter ? row.chapter.trim() : undefined,
+        exam: examId,
+        day: row.day && row.day.trim() ? Number(row.day.trim()) : undefined,
+        section,
+        type,
+        img: row.img || null,
+        passage: row.passage || null,
+        video: row.video || undefined,
+        videoUrl: row.videoUrl || undefined,
+        videoStart: row.videoStart ? Number(row.videoStart) : undefined,
+        topics,
+        metadata: {
+          ...((row.metadata && typeof row.metadata === 'object') ? row.metadata : {}),
+          level
+        },
+        ...(difficulty ? { difficulty } : {})
+      };
+      toInsert.push(questionObj);
+    }
+    await Question.insertMany(toInsert);
+    fs.unlinkSync(filePath);
+    res.json({ message: `Successfully uploaded ${toInsert.length} questions.` });
   } catch (err) {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    res.status(400).json({ message: err.message || 'Failed to process CSV file.' });
+    res.status(500).json({ error: 'Failed to insert questions', details: err.message });
   }
 };
 
