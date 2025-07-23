@@ -1,4 +1,4 @@
-// Usage: node scripts/deleteQuestionsByTopic.js "LinearEquation"
+git // Usage: node scripts/deleteQuestionsByTopic.js "LinearEquation"
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Question = require('../models/Question');

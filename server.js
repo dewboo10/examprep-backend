@@ -16,6 +16,7 @@ const QuestionAttempt = require('./models/QuestionAttempt');
 const StudySession = require('./models/StudySession');
 const adminActivityRouter = require('./routes/adminActivity');
 const practiceRoutes = require('./routes/practiceRoutes');
+const commentRoutes = require('./routes/commentRoutes');
 
 dotenv.config();
 const app = express();
@@ -85,6 +86,7 @@ app.use('/api/mock/custom', customMockRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/practice', practiceRoutes);
+app.use('/api/comments', commentRoutes);
 
 
 // ✅ Health check route
