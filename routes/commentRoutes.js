@@ -38,4 +38,22 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/comments/:id
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    // Only allow the comment owner or admin to delete
+    if (comment.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to delete this comment' });
+    }
+
+    await comment.deleteOne();
+    res.json({ message: 'Comment deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete comment' });
+  }
+});
+
 module.exports = router; 
