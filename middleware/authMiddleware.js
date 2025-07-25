@@ -7,7 +7,7 @@ function authMiddleware(req, res, next) {
     return res.status(401).json({ message: 'No token provided' });
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.split(' ')[1]; 
   // console.log('🔑 JWT_SECRET:', process.env.JWT_SECRET);
   // console.log('🔒 Token received:', token);
 

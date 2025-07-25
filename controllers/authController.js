@@ -5,6 +5,7 @@ const User = require('../models/User');
 const sendOTPEmail = require('../utils/mailer');
 const nodemailer = require("nodemailer");
 const otpStore = {}; // 🟡 In-memory OTP storage (email -> otp)  
+const crypto = require('crypto');
 
 
 exports.register = async (req, res) => {
@@ -116,6 +117,55 @@ exports.verifyOtp = async (req, res) => {
   } else {
     return res.status(400).json({ error: 'Invalid OTP' });
   }
+};
+
+// Password reset: send reset link
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  user.resetPasswordToken = token;
+  user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+  await user.save();
+
+  const resetUrl = `http://yourfrontend.com/reset-password/${token}`;
+  // Use nodemailer directly for now
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+  await transporter.sendMail({
+    from: `"ParikshaPrep" <${process.env.EMAIL_USER}>`,
+    to: user.email,
+    subject: 'Password Reset',
+    text: `Reset your password: ${resetUrl}`,
+    html: `<p>Reset your password: <a href='${resetUrl}'>${resetUrl}</a></p>`
+  });
+
+  res.json({ message: 'Password reset link sent' });
+};
+
+// Password reset: handle reset
+exports.resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+  const user = await User.findOne({
+    resetPasswordToken: token,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+  if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
+
+  user.password = await bcrypt.hash(password, 10);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  res.json({ message: 'Password has been reset' });
 };
 
 
