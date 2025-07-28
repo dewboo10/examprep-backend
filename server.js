@@ -150,7 +150,14 @@ const renderKeepAlive = () => {
     return;
   }
   
-  const url = `https://${renderUrl}/api/ping`;
+  // Fix the URL construction to avoid double https://
+  let url;
+  if (renderUrl.startsWith('http://') || renderUrl.startsWith('https://')) {
+    url = `${renderUrl}/api/ping`;
+  } else {
+    url = `https://${renderUrl}/api/ping`;
+  }
+  
   console.log(`🔄 Render self-ping: ${url}`);
   
   // Use fetch if available, otherwise use https module
