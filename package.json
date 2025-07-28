@@ -5,7 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "keep-alive": "node keep-alive.js",
+    "keep-alive:prod": "BACKEND_URL=https://parikshaprep.in node keep-alive.js"
   },
   "keywords": [],
   "author": "",

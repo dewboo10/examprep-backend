@@ -36,7 +36,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-
 // ✅ Connect to MongoDB
 connectDB();
 
@@ -56,9 +55,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Optional: respond to health check
+// ✅ Enhanced health check with uptime monitoring
+let serverStartTime = Date.now();
+let requestCount = 0;
+
 app.get('/', (req, res) => {
-  res.send('🎉 Exam Prep backend is live and healthy!');
+  const uptime = Date.now() - serverStartTime;
+  const uptimeHours = Math.floor(uptime / (1000 * 60 * 60));
+  const uptimeMinutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
+  
+  res.json({
+    status: '🎉 Exam Prep backend is live and healthy!',
+    uptime: `${uptimeHours}h ${uptimeMinutes}m`,
+    totalRequests: requestCount,
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
 });
 
 // ✅ Route imports
@@ -73,6 +85,7 @@ const seedRoutes = require('./routes/seed.routes');
 const customMockRoutes = require('./routes/customMockRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+
 // ✅ Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/exams', examRoutes);
@@ -88,13 +101,99 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/comments', commentRoutes);
 
-
-// ✅ Health check route
+// ✅ Enhanced ping endpoint for keep-alive
 app.get('/api/ping', (req, res) => {
-  res.status(200).send('pong');
+  requestCount++;
+  const uptime = Date.now() - serverStartTime;
+  
+  res.json({
+    status: 'pong',
+    uptime: `${Math.floor(uptime / 1000)}s`,
+    requests: requestCount,
+    timestamp: new Date().toISOString(),
+    memory: process.memoryUsage(),
+    dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
 });
 
+// ✅ Keep-alive endpoint for external monitoring
+app.get('/api/health', (req, res) => {
+  requestCount++;
+  
+  // Check database connection
+  const dbStatus = mongoose.connection.readyState === 1;
+  
+  if (!dbStatus) {
+    return res.status(503).json({
+      status: 'unhealthy',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  res.json({
+    status: 'healthy',
+    database: 'connected',
+    uptime: Date.now() - serverStartTime,
+    requests: requestCount,
+    timestamp: new Date().toISOString()
+  });
+});
 
+// ✅ Render-specific keep-alive mechanism
+const renderKeepAlive = () => {
+  // For Render, we need to ping the external URL, not localhost
+  const renderUrl = process.env.RENDER_EXTERNAL_URL || process.env.RENDER_EXTERNAL_HOSTNAME;
+  
+  if (!renderUrl) {
+    console.log('⚠️  RENDER_EXTERNAL_URL not set, skipping self-ping');
+    return;
+  }
+  
+  const url = `https://${renderUrl}/api/ping`;
+  console.log(`🔄 Render self-ping: ${url}`);
+  
+  // Use fetch if available, otherwise use https module
+  if (typeof fetch !== 'undefined') {
+    fetch(url)
+      .then(response => response.json())
+      .then(data => console.log('✅ Render self-ping successful:', data.status))
+      .catch(err => console.log('❌ Render self-ping failed:', err.message));
+  } else {
+    const https = require('https');
+    const urlObj = new URL(url);
+    
+    const req = https.request({
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname,
+      method: 'GET',
+      timeout: 10000
+    }, (res) => {
+      console.log('✅ Render self-ping successful, status:', res.statusCode);
+    });
+    
+    req.on('error', (err) => {
+      console.log('❌ Render self-ping failed:', err.message);
+    });
+    
+    req.on('timeout', () => {
+      console.log('⏰ Render self-ping timeout');
+      req.destroy();
+    });
+    
+    req.end();
+  }
+};
+
+// ✅ Start Render keep-alive every 10 minutes (Render's timeout is ~15 minutes)
+if (process.env.NODE_ENV === 'production' && process.env.RENDER) {
+  setInterval(renderKeepAlive, 10 * 60 * 1000); // 10 minutes
+  console.log('🔄 Render keep-alive mechanism activated (every 10 minutes)');
+  
+  // Initial ping after 30 seconds
+  setTimeout(renderKeepAlive, 30 * 1000);
+}
 
 // ✅ Secure user info
 app.get('/api/user', authMiddleware, async (req, res) => {
@@ -140,6 +239,11 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => {
   console.log('\n✅ Server running on port', PORT);
+  console.log('🔄 Keep-alive system: ACTIVE');
+  console.log('📊 Health check endpoints:');
+  console.log('   - GET  / (basic health)');
+  console.log('   - GET  /api/ping (detailed ping)');
+  console.log('   - GET  /api/health (monitoring)');
   console.log('\nAvailable routes:');
   console.log('- POST /api/auth/register');
   console.log('- POST /api/auth/login');

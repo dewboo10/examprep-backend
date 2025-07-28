@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: exam-prep-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RENDER
+        value: true
+      - key: PORT
+        value: 5050
+    healthCheckPath: /api/health
+    autoDeploy: true 
